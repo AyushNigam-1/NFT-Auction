@@ -1,8 +1,8 @@
-use crate::states::Auction;
+use crate::states::*;
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token::{Mint, Token, TokenAccount}, // ← Use these
+    token_interface::{Mint, TokenAccount, TokenInterface}, // ← Use these
 };
 #[derive(Accounts)]
 #[instruction(min_bid: u64, reserve_price: u64, end_time: i64)]
@@ -10,12 +10,12 @@ pub struct CreateAuction<'info> {
     #[account(mut)]
     pub seller: Signer<'info>,
 
-    pub nft_mint: Account<'info, Mint>,
+    pub nft_mint: InterfaceAccount<'info, Mint>,
 
     #[account(
         init,
         payer = seller,
-        space = 8 + 32 + 32 + 8 + 8 + 8 + 32 + 1,
+        space = 8 + Auction::INIT_SPACE,
         seeds = [b"auction", nft_mint.key().as_ref()],
         bump,
     )]
@@ -26,7 +26,7 @@ pub struct CreateAuction<'info> {
         associated_token::mint = nft_mint,
         associated_token::authority = seller,
     )]
-    pub seller_nft_account: Account<'info, TokenAccount>,
+    pub seller_nft_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         init_if_needed,
@@ -34,10 +34,10 @@ pub struct CreateAuction<'info> {
         associated_token::mint = nft_mint,
         associated_token::authority = auction,
     )]
-    pub vault_nft_account: Account<'info, TokenAccount>,
+    pub vault_nft_account: InterfaceAccount<'info, TokenAccount>,
 
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 

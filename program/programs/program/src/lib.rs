@@ -1,9 +1,10 @@
 use anchor_lang::prelude::*;
-pub mod errors;
 use anchor_spl::token::{transfer, Transfer};
-pub mod contexts;
-pub mod states;
+mod contexts;
+mod errors;
+mod states;
 use crate::errors::ErrorCode;
+use contexts::*;
 
 declare_id!("CnbD6KWoVguf1qdQWkrsX2dhBRg4QVJQeghqEbeVxgqs");
 
