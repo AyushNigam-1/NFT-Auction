@@ -2,14 +2,18 @@ use crate::states::*;
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface}, // ← Use these
+    token_interface::{Mint, TokenAccount, TokenInterface},
 };
+
 #[derive(Accounts)]
 #[instruction(min_bid: u64, reserve_price: u64, end_time: i64)]
 pub struct CreateAuction<'info> {
     #[account(mut)]
     pub seller: Signer<'info>,
 
+    #[account(
+        owner = token_program.key()
+    )]
     pub nft_mint: InterfaceAccount<'info, Mint>,
 
     #[account(
@@ -25,6 +29,7 @@ pub struct CreateAuction<'info> {
         mut,
         associated_token::mint = nft_mint,
         associated_token::authority = seller,
+        associated_token::token_program = token_program,
     )]
     pub seller_nft_account: InterfaceAccount<'info, TokenAccount>,
 
@@ -33,6 +38,7 @@ pub struct CreateAuction<'info> {
         payer = seller,
         associated_token::mint = nft_mint,
         associated_token::authority = auction,
+        associated_token::token_program = token_program,
     )]
     pub vault_nft_account: InterfaceAccount<'info, TokenAccount>,
 
@@ -57,7 +63,7 @@ pub struct PlaceBid<'info> {
         mut,
         constraint = highest_bidder.key() == auction.highest_bidder,
     )]
-    /// CHECK: Only used for refund if exists
+    /// CHECK: Only used for refund
     pub highest_bidder: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
@@ -66,13 +72,13 @@ pub struct PlaceBid<'info> {
 #[derive(Accounts)]
 pub struct SettleAuction<'info> {
     #[account(mut)]
-    pub settler: Signer<'info>, // Anyone can settle
+    pub settler: Signer<'info>,
 
     #[account(
         mut,
         seeds = [b"auction", auction.nft_mint.as_ref()],
         bump = auction.bump,
-        close = seller, // If no winner, lamports go to seller
+        close = seller,
     )]
     pub auction: Account<'info, Auction>,
 
@@ -80,31 +86,37 @@ pub struct SettleAuction<'info> {
     /// CHECK: Seller receives payout
     pub seller: UncheckedAccount<'info>,
 
-    pub nft_mint: Account<'info, Mint>,
+    #[account(
+        constraint = nft_mint.key() == auction.nft_mint,
+        owner = token_program.key()
+    )]
+    pub nft_mint: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
         associated_token::mint = nft_mint,
         associated_token::authority = auction,
+        associated_token::token_program = token_program,
     )]
-    pub vault_nft_account: Account<'info, TokenAccount>,
+    pub vault_nft_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         init_if_needed,
         payer = settler,
         associated_token::mint = nft_mint,
         associated_token::authority = highest_bidder,
+        associated_token::token_program = token_program,
     )]
-    pub winner_nft_account: Account<'info, TokenAccount>,
+    pub winner_nft_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
         mut,
         constraint = highest_bidder.key() == auction.highest_bidder,
     )]
-    /// CHECK: Winner receives NFT
+    /// CHECK: Winner
     pub highest_bidder: UncheckedAccount<'info>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }

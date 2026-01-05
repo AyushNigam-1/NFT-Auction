@@ -3,7 +3,7 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"; // still ne
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Cookies from "js-cookie"
+// import Cookies from "@/node_modules/@types/js-cookie"
 import { motion } from 'framer-motion';
 import axios from "axios";
 import { useMutation } from "@tanstack/react-query";
@@ -22,7 +22,7 @@ function App() {
     },
     onSuccess: (data) => {
       console.log("User fetched or created:", data);
-      Cookies.set("user", data);
+      // Cookies.set("user", data);
       console.log(data)
       router.push("/plans");
     },
@@ -33,7 +33,8 @@ function App() {
 
   useEffect(() => {
     if (connected && publicKey) {
-      submit(publicKey.toBase58());
+      router.push("/home")
+      // submit(publicKey.toBase58());
     }
   }, [connected, publicKey]);
 

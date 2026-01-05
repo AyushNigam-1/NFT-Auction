@@ -1,12 +1,13 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{transfer, Transfer};
+use anchor_spl::token_interface::{transfer_checked, TransferChecked};
 mod contexts;
 mod errors;
 mod states;
 use crate::errors::ErrorCode;
 use contexts::*;
-
-declare_id!("CnbD6KWoVguf1qdQWkrsX2dhBRg4QVJQeghqEbeVxgqs");
+// use errors::*;
+// use states::*;
+declare_id!("Dh43TjNE2obrC8ZZXgvjitekaDiLmnnTCLTqLwziWnwU");
 
 #[program]
 pub mod nft_auction {
@@ -34,14 +35,16 @@ pub mod nft_auction {
         auction.bump = ctx.bumps.auction;
 
         // Transfer NFT to vault
-        let cpi_accounts = Transfer {
+        let cpi_accounts = TransferChecked {
             from: ctx.accounts.seller_nft_account.to_account_info(),
             to: ctx.accounts.vault_nft_account.to_account_info(),
             authority: ctx.accounts.seller.to_account_info(),
+            mint: ctx.accounts.nft_mint.to_account_info(),
         };
+
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        transfer(cpi_ctx, 1)?;
+        transfer_checked(cpi_ctx, 1, 0)?;
 
         Ok(())
     }
@@ -111,15 +114,18 @@ pub mod nft_auction {
         let signer = &[&seeds[..]];
 
         // Transfer NFT to winner
-        let cpi_accounts = Transfer {
+        let cpi_accounts = TransferChecked {
             from: ctx.accounts.vault_nft_account.to_account_info(),
             to: ctx.accounts.winner_nft_account.to_account_info(),
+            mint: ctx.accounts.nft_mint.to_account_info(), // Required for checked transfer
             authority: ctx.accounts.auction.to_account_info(),
         };
-        let cpi_program = ctx.accounts.token_program.to_account_info();
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
-        transfer(cpi_ctx, 1)?;
 
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+
+        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
+
+        transfer_checked(cpi_ctx, 1, 0)?;
         // Transfer bid SOL to seller (minus any leftover if no bids, but here we have winner)
         let payout = auction.highest_bid;
         **ctx

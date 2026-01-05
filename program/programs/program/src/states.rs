@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 #[account]
+#[derive(InitSpace)]
 pub struct Auction {
     pub seller: Pubkey,
     pub nft_mint: Pubkey,
