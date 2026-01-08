@@ -6,12 +6,12 @@ export default function AppLayout({ children }: Readonly<{
     children: React.ReactNode;
 }>) {
     return (
-        <div className='relative w-full h-screen overflow-hidden'>
+        <div className='relative w-full h-screen overflow-hidden bg-[#171717]'>
             {/* <h1 className="text-2xl" >Hey</h1> */}
             <div className="relative z-10 flex h-full">
                 <Sidebar />
                 <div className="w-full flex flex-col">
-                    <Navbar />
+                    {/* <Navbar /> */}
                     <main className='p-4 overflow-y-auto flex-1'>
                         {children}
                     </main>

@@ -1,122 +1,87 @@
-use crate::states::*;
+// src/contexts.rs
+use crate::{constants::*, states::*};
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
+    token::{Mint, Token, TokenAccount},
 };
 
 #[derive(Accounts)]
-#[instruction(min_bid: u64, reserve_price: u64, end_time: i64)]
-pub struct CreateAuction<'info> {
+pub struct CreateProperty<'info> {
     #[account(mut)]
-    pub seller: Signer<'info>,
-
-    #[account(
-        owner = token_program.key()
-    )]
-    pub nft_mint: InterfaceAccount<'info, Mint>,
+    pub owner: Signer<'info>,
 
     #[account(
         init,
-        payer = seller,
-        space = 8 + Auction::INIT_SPACE,
-        seeds = [b"auction", nft_mint.key().as_ref()],
+        payer = owner,
+        space = 8 + 32 + 32 + 8 + 1,
+        seeds = [PROPERTY_SEED, owner.key().as_ref()],
         bump,
     )]
-    pub auction: Account<'info, Auction>,
+    pub property: Account<'info, Property>,
 
-    #[account(
-        mut,
-        associated_token::mint = nft_mint,
-        associated_token::authority = seller,
-        associated_token::token_program = token_program,
-    )]
-    pub seller_nft_account: InterfaceAccount<'info, TokenAccount>,
+    #[account(mut)]
+    pub mint: Account<'info, Mint>, // Mint must have mint authority = owner
 
     #[account(
         init_if_needed,
-        payer = seller,
-        associated_token::mint = nft_mint,
-        associated_token::authority = auction,
-        associated_token::token_program = token_program,
+        payer = owner,
+        associated_token::mint = mint,
+        associated_token::authority = owner,
     )]
-    pub vault_nft_account: InterfaceAccount<'info, TokenAccount>,
+    pub owner_token_account: Account<'info, TokenAccount>, // ← Add this
 
     pub system_program: Program<'info, System>,
-    pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>, // ← Add this too
 }
 
 #[derive(Accounts)]
-pub struct PlaceBid<'info> {
+pub struct BuyShares<'info> {
     #[account(mut)]
-    pub bidder: Signer<'info>,
+    pub buyer: Signer<'info>,
 
     #[account(
         mut,
-        seeds = [b"auction", auction.nft_mint.as_ref()],
-        bump = auction.bump,
+        seeds = [PROPERTY_SEED, property.owner.as_ref()],
+        bump = property.bump,
     )]
-    pub auction: Account<'info, Auction>,
-
-    #[account(
-        mut,
-        constraint = highest_bidder.key() == auction.highest_bidder,
-    )]
-    /// CHECK: Only used for refund
-    pub highest_bidder: UncheckedAccount<'info>,
-
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-pub struct SettleAuction<'info> {
-    #[account(mut)]
-    pub settler: Signer<'info>,
-
-    #[account(
-        mut,
-        seeds = [b"auction", auction.nft_mint.as_ref()],
-        bump = auction.bump,
-        close = seller,
-    )]
-    pub auction: Account<'info, Auction>,
-
-    #[account(mut)]
-    /// CHECK: Seller receives payout
-    pub seller: UncheckedAccount<'info>,
-
-    #[account(
-        constraint = nft_mint.key() == auction.nft_mint,
-        owner = token_program.key()
-    )]
-    pub nft_mint: InterfaceAccount<'info, Mint>,
-
-    #[account(
-        mut,
-        associated_token::mint = nft_mint,
-        associated_token::authority = auction,
-        associated_token::token_program = token_program,
-    )]
-    pub vault_nft_account: InterfaceAccount<'info, TokenAccount>,
+    pub property: Account<'info, Property>,
 
     #[account(
         init_if_needed,
-        payer = settler,
-        associated_token::mint = nft_mint,
-        associated_token::authority = highest_bidder,
-        associated_token::token_program = token_program,
+        payer = buyer,
+        space = 8 + 32 + 32 + 8 + 8 + 1,
+        seeds = [HOLDER_SEED, buyer.key().as_ref(), property.key().as_ref()],
+        bump,
     )]
-    pub winner_nft_account: InterfaceAccount<'info, TokenAccount>,
+    pub holder: Account<'info, ShareHolder>,
+
+    #[account(mut)]
+    pub buyer_token_account: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    /// CHECK: Vault holds SOL for yields later
+    pub vault: UncheckedAccount<'info>,
+
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct DistributeYield<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
 
     #[account(
         mut,
-        constraint = highest_bidder.key() == auction.highest_bidder,
+        constraint = property.owner == owner.key(),
     )]
-    /// CHECK: Winner
-    pub highest_bidder: UncheckedAccount<'info>,
+    pub property: Account<'info, Property>,
 
-    pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
+    #[account(mut)]
+    /// CHECK: Vault receives/distributes SOL
+    pub vault: UncheckedAccount<'info>,
+
     pub system_program: Program<'info, System>,
 }

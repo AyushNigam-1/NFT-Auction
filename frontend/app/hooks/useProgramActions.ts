@@ -1,8 +1,4 @@
-import { createUmi } from "@metaplex-foundation/umi-bundle-defaults"
-import { DigitalAsset, fetchAllDigitalAssetByOwner, mplTokenMetadata } from "@metaplex-foundation/mpl-token-metadata"
-import { NftData } from "../types";
-import axios from "axios";
-import { publicKey } from "@metaplex-foundation/umi";
+import { PropertyData } from "../types";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { BN, web3 } from "@coral-xyz/anchor";
@@ -12,106 +8,113 @@ import { getMintProgramId } from "../utils";
 
 export const useProgramActions = () => {
     const wallet = useWallet()
-    const { program } = useProgram()
+    const { program, PROGRAM_ID
 
-    async function fetchNFTs() {
+    } = useProgram()
+
+    // async function fetchNFTs() {
+    //     try {
+    //         const umi = createUmi("https://api.devnet.solana.com")
+    //             .use(mplTokenMetadata());
+
+    //         const assets = await fetchAllDigitalAssetByOwner(umi, publicKey(wallet.publicKey!.toString()));
+    //         const nftDataPromises = assets.map(async (asset: DigitalAsset) => {
+    //             try {
+    //                 const nftItem: NftData = {
+    //                     mint: asset.publicKey.toString(),
+    //                     name: asset.metadata.name,
+    //                     uri: asset.metadata.uri,
+    //                     image: "/placeholder.png" // Fallback image
+    //                 };
+    //                 console.log("nftitem", asset)
+    //                 // if (asset.metadata.uri) {
+    //                 //     try {
+    //                 //         const response = await axios.get(asset.metadata.uri);
+    //                 //         if (response.data && response.data.image) {
+    //                 //             nftItem.image = response.data.image;
+    //                 //         }
+    //                 //     } catch (jsonError) {
+    //                 //         console.error(`Failed to fetch JSON for ${asset.metadata.name}`, jsonError);
+    //                 //     }
+    //                 // }
+    //                 return nftItem;
+    //             } catch (e) {
+    //                 return null;
+    //             }
+    //         });
+
+    //         const resolvedNfts = await Promise.all(nftDataPromises);
+
+    //         const validNfts = resolvedNfts.filter((n): n is NftData => n !== null);
+
+    //         return validNfts
+
+    //     } catch (error) {
+    //         console.error("Error fetching NFTs:", error);
+    //         // setStatus("Error fetching NFTs");
+    //     } finally {
+    //         // setLoading(false);
+    //     }
+    // }
+
+
+    async function getAllProperties(): Promise<PropertyData[]> {
+
         try {
-            const umi = createUmi("https://api.devnet.solana.com")
-                .use(mplTokenMetadata());
+            const properties = await (program!.account as any).property.all();
 
-            const assets = await fetchAllDigitalAssetByOwner(umi, publicKey(wallet.publicKey!.toString()));
-            const nftDataPromises = assets.map(async (asset: DigitalAsset) => {
-                try {
-                    const nftItem: NftData = {
-                        mint: asset.publicKey.toString(),
-                        name: asset.metadata.name,
-                        uri: asset.metadata.uri,
-                        image: "/placeholder.png" // Fallback image
-                    };
+            const formattedProperties: PropertyData[] = properties.map((prop: any) => ({
+                publicKey: prop.publicKey,
+                owner: prop.account.owner,
+                mint: prop.account.mint,
+                totalShares: prop.account.totalShares.toBigInt(), // u64 → bigint
+                bump: prop.account.bump,
+            }));
 
-                    if (asset.metadata.uri) {
-                        try {
-                            const response = await axios.get(asset.metadata.uri);
-                            if (response.data && response.data.image) {
-                                nftItem.image = response.data.image;
-                            }
-                        } catch (jsonError) {
-                            console.error(`Failed to fetch JSON for ${asset.metadata.name}`, jsonError);
-                        }
-                    }
-                    return nftItem;
-                } catch (e) {
-                    return null;
-                }
-            });
-
-            const resolvedNfts = await Promise.all(nftDataPromises);
-
-            const validNfts = resolvedNfts.filter((n): n is NftData => n !== null);
-
-            return validNfts
-
+            console.log(`Fetched ${formattedProperties.length} properties`);
+            return formattedProperties;
         } catch (error) {
-            console.error("Error fetching NFTs:", error);
-            // setStatus("Error fetching NFTs");
-        } finally {
-            // setLoading(false);
+            console.error("Error fetching properties:", error);
+            return [];
         }
     }
 
-    async function createAuctionInstruction(
+    async function createProperty(
         params: {
-            nftMint: PublicKey;
-            minBid: number | BN;         // in lamports (e.g., 0.1 SOL = 100_000_000)
-            reservePrice: number | BN;   // in lamports
-            durationSeconds: number;     // e.g., 86400 for 24 hours
+            totalShares: number | BN,
+            mintPubkey: PublicKey
         }
-    ): Promise<TransactionInstruction> {
+    ) {
 
-        const { nftMint, minBid, reservePrice, durationSeconds } = params;
+        if (!wallet.connected || !wallet.publicKey) {
+            throw new Error("Wallet not connected");
+        }
 
-        const tokenProgram = getMintProgramId(nftMint)
-        // Current time + duration
-        const endTime = new BN(Math.floor(Date.now() / 1000) + durationSeconds);
+        const tokenProgramId = getMintProgramId(params.mintPubkey)
 
-        // Derive PDA for auction account
-        const [auctionPda, auctionBump] = PublicKey.findProgramAddressSync(
-            [Buffer.from("auction"), nftMint.toBuffer()],
-            program!.programId
+        const [propertyPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("property"), wallet.publicKey.toBuffer()],
+            PROGRAM_ID
         );
 
-        // Seller's NFT token account (ATA)
-        const sellerNftAccount = await getAssociatedTokenAddressSync(
-            nftMint,
-            wallet.publicKey!
+        const ownerTokenAccount = getAssociatedTokenAddressSync(
+            params.mintPubkey,
+            wallet.publicKey
         );
 
-        // Vault NFT token account (owned by auction PDA)
-        const vaultNftAccount = await getAssociatedTokenAddressSync(
-            nftMint,
-            auctionPda
-        );
-
-        const instruction = await program!.methods
-            .createAuction(
-                new BN(minBid),
-                new BN(reservePrice),
-                endTime
-            )
+        const tx = await program!.methods
+            .createProperty(new BN(params.totalShares))
             .accounts({
-                seller: wallet.publicKey!,
-                nftMint,
-                auction: auctionPda,
-                sellerNftAccount,
-                vaultNftAccount,
-                systemProgram: web3.SystemProgram.programId,
-                tokenProgram: tokenProgram,
+                owner: wallet.publicKey,
+                property: propertyPda,
+                mint: params.mintPubkey,
+                ownerTokenAccount,
+                systemProgram: web3.SystemProgram,
+                tokenProgram: tokenProgramId,
                 associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-                rent: web3.SYSVAR_RENT_PUBKEY,
-            })
-            .instruction();
+            }).rpc()
+        return tx;
 
-        return instruction;
     }
-    return { fetchNFTs, createAuctionInstruction }
+    return { createProperty, getAllProperties }
 }

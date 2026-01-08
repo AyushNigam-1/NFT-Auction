@@ -1,143 +1,75 @@
-use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{transfer_checked, TransferChecked};
+// src/lib.rs
+mod constants;
 mod contexts;
-mod errors;
+mod events;
 mod states;
-use crate::errors::ErrorCode;
-use contexts::*;
-// use errors::*;
-// use states::*;
-declare_id!("Dh43TjNE2obrC8ZZXgvjitekaDiLmnnTCLTqLwziWnwU");
+use crate::{contexts::*, events::*};
+use anchor_lang::prelude::*;
+use anchor_spl::token::{mint_to, MintTo};
+
+declare_id!("Dh43TjNE2obrC8ZZXgvjitekaDiLmnnTCLTqLwziWnwU"); // Replace after deploy
 
 #[program]
-pub mod nft_auction {
+pub mod yieldhome {
     use super::*;
 
-    pub fn create_auction(
-        ctx: Context<CreateAuction>,
-        min_bid: u64,
-        reserve_price: u64,
-        end_time: i64,
-    ) -> Result<()> {
-        require!(
-            end_time > Clock::get()?.unix_timestamp,
-            ErrorCode::InvalidEndTime
-        );
+    pub fn create_property(ctx: Context<CreateProperty>, total_shares: u64) -> Result<()> {
+        let property = &mut ctx.accounts.property;
+        property.owner = ctx.accounts.owner.key();
+        property.mint = ctx.accounts.mint.key();
+        property.total_shares = total_shares;
+        property.bump = ctx.bumps.property;
 
-        let auction = &mut ctx.accounts.auction;
-        auction.seller = ctx.accounts.seller.key();
-        auction.nft_mint = ctx.accounts.nft_mint.key();
-        auction.min_bid = min_bid;
-        auction.reserve_price = reserve_price;
-        auction.end_time = end_time;
-        auction.highest_bid = 0;
-        auction.highest_bidder = Pubkey::default();
-        auction.bump = ctx.bumps.auction;
-
-        // Transfer NFT to vault
-        let cpi_accounts = TransferChecked {
-            from: ctx.accounts.seller_nft_account.to_account_info(),
-            to: ctx.accounts.vault_nft_account.to_account_info(),
-            authority: ctx.accounts.seller.to_account_info(),
-            mint: ctx.accounts.nft_mint.to_account_info(),
+        // Mint all shares to owner initially
+        let cpi_accounts = MintTo {
+            mint: ctx.accounts.mint.to_account_info(),
+            to: ctx.accounts.owner_token_account.to_account_info(), // Assume owner ATA
+            authority: ctx.accounts.owner.to_account_info(),
         };
-
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        transfer_checked(cpi_ctx, 1, 0)?;
+        mint_to(cpi_ctx, total_shares)?;
+
+        emit!(PropertyCreated {
+            property: property.key(),
+            mint: ctx.accounts.mint.key(),
+            total_shares,
+        });
 
         Ok(())
     }
 
-    pub fn place_bid(ctx: Context<PlaceBid>, bid_amount: u64) -> Result<()> {
-        let auction = &ctx.accounts.auction;
-        let clock = Clock::get()?;
+    pub fn buy_shares(ctx: Context<BuyShares>, shares: u64, paid_sol: u64) -> Result<()> {
+        // Transfer SOL to vault (simple price = paid_sol for shares)
+        **ctx.accounts.vault.try_borrow_mut_lamports()? += paid_sol;
+        **ctx.accounts.buyer.try_borrow_mut_lamports()? -= paid_sol;
 
-        require!(
-            clock.unix_timestamp < auction.end_time,
-            ErrorCode::AuctionEnded
-        );
-        require!(bid_amount > auction.highest_bid, ErrorCode::BidTooLow);
-        require!(
-            auction.highest_bid == 0 || bid_amount >= auction.min_bid,
-            ErrorCode::BidTooLow
-        );
+        // Transfer shares from owner to buyer (simplified — owner must approve)
+        // In real: CPI from owner ATA to buyer ATA
 
-        // Refund previous bidder if exists
-        if auction.highest_bid > 0 {
-            **ctx
-                .accounts
-                .highest_bidder
-                .to_account_info()
-                .try_borrow_mut_lamports()? -= auction.highest_bid;
-            **ctx
-                .accounts
-                .bidder
-                .to_account_info()
-                .try_borrow_mut_lamports()? += auction.highest_bid;
-        }
+        let holder = &mut ctx.accounts.holder;
+        holder.owner = ctx.accounts.buyer.key();
+        holder.property = ctx.accounts.property.key();
+        holder.shares += shares;
+        holder.bump = ctx.bumps.holder;
 
-        // Take new bid
-        **ctx
-            .accounts
-            .auction
-            .to_account_info()
-            .try_borrow_mut_lamports()? += bid_amount;
-        **ctx
-            .accounts
-            .bidder
-            .to_account_info()
-            .try_borrow_mut_lamports()? -= bid_amount;
-
-        // Update state
-        let auction_mut = &mut ctx.accounts.auction;
-        auction_mut.highest_bid = bid_amount;
-        auction_mut.highest_bidder = ctx.accounts.bidder.key();
+        emit!(SharesBought {
+            buyer: ctx.accounts.buyer.key(),
+            property: ctx.accounts.property.key(),
+            shares,
+            paid_sol,
+        });
 
         Ok(())
     }
 
-    pub fn settle_auction(ctx: Context<SettleAuction>) -> Result<()> {
-        let auction = &ctx.accounts.auction;
-        let clock = Clock::get()?;
-
-        require!(
-            clock.unix_timestamp >= auction.end_time,
-            ErrorCode::AuctionNotEnded
-        );
-        require!(
-            auction.highest_bid >= auction.reserve_price,
-            ErrorCode::ReserveNotMet
-        );
-
-        let seeds = &[b"auction".as_ref(), &[auction.bump]];
-        let signer = &[&seeds[..]];
-
-        // Transfer NFT to winner
-        let cpi_accounts = TransferChecked {
-            from: ctx.accounts.vault_nft_account.to_account_info(),
-            to: ctx.accounts.winner_nft_account.to_account_info(),
-            mint: ctx.accounts.nft_mint.to_account_info(), // Required for checked transfer
-            authority: ctx.accounts.auction.to_account_info(),
-        };
-
-        let cpi_program = ctx.accounts.token_program.to_account_info();
-
-        let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, signer);
-
-        transfer_checked(cpi_ctx, 1, 0)?;
-        // Transfer bid SOL to seller (minus any leftover if no bids, but here we have winner)
-        let payout = auction.highest_bid;
-        **ctx
-            .accounts
-            .auction
-            .to_account_info()
-            .try_borrow_mut_lamports()? -= payout;
-        **ctx
-            .accounts
-            .seller
-            .to_account_info()
-            .try_borrow_mut_lamports()? += payout;
+    pub fn distribute_yield(ctx: Context<DistributeYield>, total_sol: u64) -> Result<()> {
+        // Simplified: Owner sends SOL to vault, event logs distribution
+        // Advanced: Loop over holders or use proportional claim later
+        emit!(YieldDistributed {
+            property: ctx.accounts.property.key(),
+            total_sol,
+        });
 
         Ok(())
     }

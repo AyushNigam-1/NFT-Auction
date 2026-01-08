@@ -1,3 +1,4 @@
+import { PublicKey } from "@solana/web3.js";
 import { Dispatch, SetStateAction } from "react";
 
 export interface HeaderProps {
@@ -8,10 +9,10 @@ export interface HeaderProps {
     setOpen?: Dispatch<SetStateAction<boolean>>
 }
 
-// Define the shape of the data we need for the UI
-export interface NftData {
-    mint: string;
-    name: string;
-    uri: string;
-    image?: string; // We will load this from the URI
+export interface PropertyData {
+    publicKey: PublicKey;
+    owner: PublicKey;
+    mint: PublicKey;
+    totalShares: bigint;
+    bump: number;
 }

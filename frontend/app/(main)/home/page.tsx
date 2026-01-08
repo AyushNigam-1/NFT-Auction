@@ -96,56 +96,6 @@ const page = () => {
 
     return (
         <div className="p-4 border rounded-lg max-w-md mx-auto mt-10 space-y-4">
-            <h2 className="text-xl font-bold">Create Solana NFT</h2>
-
-            {/* File Input */}
-            <div>
-                <label className="block text-sm font-medium">Select Image</label>
-                <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="mt-1 block w-full"
-                />
-            </div>
-
-            {/* Name Input */}
-            <div>
-                <label className="block text-sm font-medium">NFT Name</label>
-                <input
-                    type="text"
-                    value={nftName}
-                    onChange={(e) => setNftName(e.target.value)}
-                    placeholder="e.g. Super Cool Ape"
-                    className="mt-1 block w-full border p-2 rounded text-black"
-                />
-            </div>
-
-            {/* Mint Button */}
-            <button
-                onClick={mintNft}
-                disabled={!wallet.connected}
-                className="w-full bg-purple-600 text-white p-2 rounded hover:bg-purple-700 disabled:opacity-50"
-            >
-                {wallet.connected ? 'Mint NFT' : 'Connect Wallet First'}
-            </button>
-
-            {/* Status & Output */}
-            {status && <p className="text-sm text-gray-600 mt-2">{status}</p>}
-
-            {mintAddress && (
-                <div className="mt-4 p-2 bg-green-100 border border-green-300 rounded text-green-800 break-all">
-                    <p className="font-bold">Minted Successfully!</p>
-                    <a
-                        href={`https://explorer.solana.com/address/${mintAddress}?cluster=devnet`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline"
-                    >
-                        View on Explorer
-                    </a>
-                </div>
-            )}
         </div>
     );
 };
