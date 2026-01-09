@@ -8,9 +8,7 @@ import { getMintProgramId } from "../utils";
 
 export const useProgramActions = () => {
     const wallet = useWallet()
-    const { program, PROGRAM_ID
-
-    } = useProgram()
+    const { program, PROGRAM_ID } = useProgram()
 
     // async function fetchNFTs() {
     //     try {
@@ -80,17 +78,15 @@ export const useProgramActions = () => {
     }
 
     async function createProperty(
-        params: {
-            totalShares: number | BN,
-            mintPubkey: PublicKey
-        }
+        totalShares: number | BN,
+        mintPubkey: PublicKey,
+        metadata_uri: string
     ) {
-
         if (!wallet.connected || !wallet.publicKey) {
             throw new Error("Wallet not connected");
         }
 
-        const tokenProgramId = getMintProgramId(params.mintPubkey)
+        const tokenProgramId = getMintProgramId(mintPubkey)
 
         const [propertyPda] = PublicKey.findProgramAddressSync(
             [Buffer.from("property"), wallet.publicKey.toBuffer()],
@@ -98,16 +94,16 @@ export const useProgramActions = () => {
         );
 
         const ownerTokenAccount = getAssociatedTokenAddressSync(
-            params.mintPubkey,
+            mintPubkey,
             wallet.publicKey
         );
 
         const tx = await program!.methods
-            .createProperty(new BN(params.totalShares))
+            .createProperty(new BN(totalShares), metadata_uri)
             .accounts({
                 owner: wallet.publicKey,
                 property: propertyPda,
-                mint: params.mintPubkey,
+                mint: mintPubkey,
                 ownerTokenAccount,
                 systemProgram: web3.SystemProgram,
                 tokenProgram: tokenProgramId,

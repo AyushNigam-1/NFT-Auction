@@ -1,8 +1,8 @@
 import { useWallet, useConnection, useAnchorWallet } from "@solana/wallet-adapter-react";
 import { PublicKey } from "@solana/web3.js";
 import { useMemo } from "react";
-import idl from "../target/idl/nft_auction.json";
-import type { NftAuction } from "../target/types/nft_auction";
+import idl from "../target/idl/yieldhome.json";
+import type { Yieldhome } from "../target/types/yieldhome";
 import { AnchorProvider, setProvider, Program } from "@coral-xyz/anchor";
 
 export const useProgram = () => {
@@ -27,7 +27,7 @@ export const useProgram = () => {
     setProvider(provider!);
     const program = useMemo(() => {
         if (!provider) return null;
-        return new Program(idl as NftAuction, provider);
+        return new Program(idl as Yieldhome, provider);
     }, [provider]);
 
     const getEscrowStatePDA = (initializerKey: PublicKey, uniqueSeed: Buffer) => {

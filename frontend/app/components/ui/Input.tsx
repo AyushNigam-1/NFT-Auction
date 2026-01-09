@@ -1,0 +1,57 @@
+import { ChangeEvent } from "react";
+
+const InputGroup: React.FC<{
+    label: string;
+    name: string;
+    value?: string | number | File | undefined;
+    onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+    placeholder: string;
+    type?: string;
+    disabled?: boolean;
+    textarea?: boolean;
+    classNames?: string
+}> = ({ label, name, value, onChange, placeholder, type = 'text', disabled, textarea, classNames }) => (
+    <div className={` ${classNames} w-full `}>
+        <label htmlFor={name} className="block font-bold text-gray-700 dark:text-gray-300 mb-1 ">
+            {label}
+        </label>
+        {
+            textarea ? (
+                <textarea
+                    id={name}
+                    name={name}
+                    value={value as string}
+                    onChange={onChange}
+                    placeholder={placeholder}
+                    disabled={disabled}
+                    rows={4}
+                    className="w-full px-4 py-3 border-none rounded-lg dark:bg-white/5 dark:text-gray-200 disabled:bg-gray-100 disabled:dark:bg-gray-600 transition"
+                />
+            ) : type === "file" ? (
+                // FIX: Added attributes here. Note: We DO NOT pass 'value' to file inputs
+                <input
+                    id={name}
+                    name={name}
+                    type="file"
+                    onChange={onChange}
+                    disabled={disabled}
+                    className="w-full px-4 py-3 border-none rounded-lg dark:bg-white/5 dark:text-gray-200 disabled:bg-gray-100 disabled:dark:bg-gray-600 transition"
+                />
+            ) : (
+                <input
+                    id={name}
+                    name={name}
+                    type={type}
+                    step={type === 'number' ? 'any' : undefined}
+                    value={value as string | number}
+                    onChange={onChange}
+                    placeholder={placeholder}
+                    disabled={disabled}
+                    className="w-full px-4 py-3 border-none rounded-lg dark:bg-white/5 dark:text-gray-200 disabled:bg-gray-100 disabled:dark:bg-gray-600 transition"
+                />
+            )
+        }
+    </div>
+);
+
+export default InputGroup;

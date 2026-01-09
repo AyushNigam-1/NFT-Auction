@@ -1,61 +1,39 @@
 import { PublicKey } from "@solana/web3.js";
 import { useMutation } from "@tanstack/react-query";
 import { useProgramActions } from "./useProgramActions";
+import { BN } from "@coral-xyz/anchor";
+import { PropertyFormData } from "../types";
 
 export const useMutations = () => {
     const programActions = useProgramActions()
 
-    const createSubscription = useMutation({
+    const createProperty = useMutation({
         mutationFn: async ({
-            tier,
-            planPDA,
-            planName,
-            payerKey,
-            periodSeconds,
-            amount,
-            autoRenew,
-            receiver,
-            mint
+            metadata,
+            mintPubkey,
         }: {
-            tier: string;
-            planPDA: PublicKey;
-            planName: string,
-            payerKey: PublicKey;
-            periodSeconds: number;
-            amount: number;          // 🔒 locked price
-            autoRenew?: boolean;
-            receiver: PublicKey,
-            mint: PublicKey
+            metadata: PropertyFormData;
+            mintPubkey: PublicKey;
         }) => {
-            // const subscription = await programActions.createAuctionInstruction(
-            //     tier,                   // tier name
-            //     planPDA,                // plan PDA
-            //     payerKey,               // user wallet
-            //     periodSeconds,          // billing period
-            //     amount,                 // 🔒 locked amount
-            //     autoRenew,
-            //     receiver,
-            //     mint,
+            // const txSig = await programActions.createProperty(
+            //     totalShares,
+            //     mintPubkey,
             // );
-            // if (!subscription) {
-            //     throw new Error("Failed to create subscription");
-            // }
-            // return subscription;
 
+            // return { txSig };
         },
-
-        // onSuccess: async ({ subscriptionPDA, account }, { planName }) => {
-        //     // toast.success("Subscription created successfully!");
-        //     console.log("New Subscription PDA:", subscriptionPDA, account);
-        //     createSubscriptionDb.mutate({ account: { ...account, planName } })
-        //     // Refetch your subscriptions list
-        //     // queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
-        //     // queryClient.invalidateQueries({ queryKey: ["userSubscriptions", payerKey.toBase58()] });
-        // },
-
-        // onError: (error: any) => {
-        //     console.error("Failed to create subscription:", error);
-        //     // toast.error(error.message || "Failed to create subscription");
-        // },
+        onSuccess: (data) => {
+            // console.log("Property created successfully! Tx:", data.txSig);
+            // Optional: Show toast
+            // toast.success("Property listed successfully!");
+            // Invalidate/refetch relevant queries
+            // queryClient.invalidateQueries({ queryKey: ["properties"] });
+            // queryClient.invalidateQueries({ queryKey: ["userProperties"] });
+        },
+        onError: (error: any) => {
+            console.error("Failed to create property:", error);
+            // toast.error(error.message || "Failed to create property");
+        },
     });
+    return { createProperty }
 }

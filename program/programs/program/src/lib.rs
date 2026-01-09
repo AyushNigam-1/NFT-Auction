@@ -13,13 +13,17 @@ declare_id!("Dh43TjNE2obrC8ZZXgvjitekaDiLmnnTCLTqLwziWnwU"); // Replace after de
 pub mod yieldhome {
     use super::*;
 
-    pub fn create_property(ctx: Context<CreateProperty>, total_shares: u64) -> Result<()> {
+    pub fn create_property(
+        ctx: Context<CreateProperty>,
+        total_shares: u64,
+        metadata_uri: String,
+    ) -> Result<()> {
         let property = &mut ctx.accounts.property;
         property.owner = ctx.accounts.owner.key();
         property.mint = ctx.accounts.mint.key();
         property.total_shares = total_shares;
         property.bump = ctx.bumps.property;
-
+        property.metadata_uri = metadata_uri;
         // Mint all shares to owner initially
         let cpi_accounts = MintTo {
             mint: ctx.accounts.mint.to_account_info(),

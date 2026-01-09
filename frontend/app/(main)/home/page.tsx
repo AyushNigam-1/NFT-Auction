@@ -95,7 +95,7 @@ const page = () => {
     }, [wallet, file, nftName]);
 
     return (
-        <div className="p-4 border rounded-lg max-w-md mx-auto mt-10 space-y-4">
+        <div className=" space-y-4">
         </div>
     );
 };

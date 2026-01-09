@@ -33,7 +33,7 @@ function App() {
 
   useEffect(() => {
     if (connected && publicKey) {
-      router.push("/home")
+      router.push("/properties")
       // submit(publicKey.toBase58());
     }
   }, [connected, publicKey]);

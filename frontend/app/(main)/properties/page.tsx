@@ -5,14 +5,16 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import Header from "@/app/components/ui/Header";
 import { useQuery } from "@tanstack/react-query";
 import { useProgramActions } from "@/app/hooks/useProgramActions";
-
+import PropertyForm from "@/app/components/ui/PropertyForm";
 
 
 export default function MyNFTsPage() {
+
     const wallet = useWallet();
-    const { createProperty, getAllProperties } = useProgramActions()
+    const { getAllProperties } = useProgramActions()
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState("");
+    const [isOpen, setOpen] = useState(false)
 
     const {
         data: properties,
@@ -25,13 +27,15 @@ export default function MyNFTsPage() {
         queryFn: async () => await getAllProperties(),
         staleTime: 1000 * 60, // 1 min cache (tweak if needed)
     });
+
     console.log("subscribers", properties)
 
-
-
     return (
-
         <>
+            <button className="" onClick={() => setOpen(true)} >
+                Open
+            </button>
+            <PropertyForm isOpen={isOpen} setIsOpen={setOpen} />
         </>
     );
 }

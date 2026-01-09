@@ -6,7 +6,7 @@ export default function AppLayout({ children }: Readonly<{
     children: React.ReactNode;
 }>) {
     return (
-        <div className='relative w-full h-screen overflow-hidden bg-[#171717]'>
+        <div className='relative w-full h-screen overflow-hidden bg-[#171717] font-mono'>
             {/* <h1 className="text-2xl" >Hey</h1> */}
             <div className="relative z-10 flex h-full">
                 <Sidebar />

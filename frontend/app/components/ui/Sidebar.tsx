@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, ChartNoAxesGanttIcon, History, Ticket } from 'lucide-react';
+import { Bell, Building, ChartNoAxesGanttIcon, History, Ticket } from 'lucide-react';
 
 const Sidebar = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
@@ -19,21 +19,21 @@ const Sidebar = () => {
 
     const navOptions = [
         {
-            icon: (<ChartNoAxesGanttIcon />),
-            text: "Plans", route: "/user/plans"
+            icon: (<Building />),
+            text: "Properties", route: "/properties"
         },
-        {
-            icon: (<Ticket />
-            ), text: "Subscriptions", route: "/user/subscriptions"
-        },
-        {
-            icon: (<Bell />),
-            text: "Notifications", route: "/user/notifications"
-        },
-        {
-            icon: (<History />),
-            text: "History", route: "/user/history"
-        }
+        // {
+        //     icon: (<Ticket />
+        //     ), text: "Subscriptions", route: "/user/subscriptions"
+        // },
+        // {
+        //     icon: (<Bell />),
+        //     text: "Notifications", route: "/user/notifications"
+        // },
+        // {
+        //     icon: (<History />),
+        //     text: "History", route: "/user/history"
+        // }
     ];
     return (
         <aside
@@ -42,14 +42,14 @@ const Sidebar = () => {
                 } sm:translate-x-0`}
             aria-label="Sidebar"
         >
-            <div className="h-full  overflow-y-auto bg-[#1e1f23]">
+            <div className="h-full  overflow-y-auto bg-white/5">
                 <div className="text-3xl font-extrabold text-gray-900 dark:text-white p-3.5 border-b-2 border-b-white/5">
-                    Solpay
+                    YieldHome
                 </div>
                 <ul className="space-y-2 font-medium p-3">
                     {navOptions.map((option, index) => (
                         <li key={index}>
-                            <button className={`cursor-pointer font-semibold flex items-center gap-4 text-lg w-full  p-2   group ${currentPage === option.route ? "border-s-2 border-blue-400 text-blue-400" : "text-white "}`} onClick={() => handleNavigate(option.route)} >
+                            <button className={`cursor-pointer font-semibold flex items-center gap-4 text-lg w-full  p-2   group ${currentPage === option.route ? " text-green-400" : "text-white "}`} onClick={() => handleNavigate(option.route)} >
                                 {option.icon}
                                 <span className=" whitespace-nowrap">{option.text}</span>
                             </button>

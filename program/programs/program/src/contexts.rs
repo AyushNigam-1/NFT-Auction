@@ -14,7 +14,7 @@ pub struct CreateProperty<'info> {
     #[account(
         init,
         payer = owner,
-        space = 8 + 32 + 32 + 8 + 1,
+        space = 8 + Property::INIT_SPACE,
         seeds = [PROPERTY_SEED, owner.key().as_ref()],
         bump,
     )]
