@@ -15,7 +15,7 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
         name: "Sunshine Apartments - Pune",
         symbol: "SUNAPT",
         description: "Modern 2BHK in Hinjewadi with gym and pool",
-        image: "", // Note: This should ideally be null | File | string
+        image: null,
         address: "Hinjewadi Phase 1, Pune, Maharashtra",
         total_value_inr: "1.2 crore",
         expected_yield: "6.5%",
@@ -257,7 +257,7 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                                     <div className='h-0.5 w-full bg-white/10' />
 
                                     <button
-                                        onClick={() => console.log(formData)}
+                                        onClick={() => createProperty.mutateAsync({ metadata: formData })}
                                         className=" m-auto flex items-center justify-center gap-2 p-3 rounded-lg font-semibold text-lg transition-all bg-green-600 text-white cursor-pointer hover:bg-green-700"
                                     >
                                         {createProperty.isPending ? <Loader /> : <Zap className="size-6" />}

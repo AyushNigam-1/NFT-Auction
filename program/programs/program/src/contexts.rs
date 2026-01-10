@@ -1,9 +1,9 @@
-// src/contexts.rs
 use crate::{constants::*, states::*};
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token::{Mint, Token, TokenAccount},
+    // 👇 FIX 1: Import TokenInterface, remove Token
+    token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
 #[derive(Accounts)]
@@ -21,19 +21,32 @@ pub struct CreateProperty<'info> {
     pub property: Account<'info, Property>,
 
     #[account(mut)]
-    pub mint: Account<'info, Mint>, // Mint must have mint authority = owner
+    pub mint: InterfaceAccount<'info, Mint>,
 
     #[account(
         init_if_needed,
         payer = owner,
         associated_token::mint = mint,
         associated_token::authority = owner,
+        associated_token::token_program = token_program
     )]
-    pub owner_token_account: Account<'info, TokenAccount>, // ← Add this
+    pub owner_token_account: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(
+        init_if_needed,
+        payer = owner,
+        associated_token::mint = mint,
+        associated_token::authority = property,
+        associated_token::token_program = token_program
+    )]
+    pub vault_token_account: InterfaceAccount<'info, TokenAccount>,
 
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
-    pub associated_token_program: Program<'info, AssociatedToken>, // ← Add this too
+
+    // 👇 FIX 2: This is now correctly imported
+    pub token_program: Interface<'info, TokenInterface>,
+
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]
@@ -58,13 +71,16 @@ pub struct BuyShares<'info> {
     pub holder: Account<'info, ShareHolder>,
 
     #[account(mut)]
-    pub buyer_token_account: Account<'info, TokenAccount>,
+    // 👇 FIX 3: Must be InterfaceAccount if using token_interface::TokenAccount
+    pub buyer_token_account: InterfaceAccount<'info, TokenAccount>,
 
     #[account(mut)]
     /// CHECK: Vault holds SOL for yields later
     pub vault: UncheckedAccount<'info>,
 
-    pub token_program: Program<'info, Token>,
+    // 👇 FIX 4: Update this to support Token-2022 mints too
+    pub token_program: Interface<'info, TokenInterface>,
+
     pub system_program: Program<'info, System>,
 }
 

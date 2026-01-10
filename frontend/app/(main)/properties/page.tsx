@@ -35,6 +35,9 @@ export default function MyNFTsPage() {
             <button className="" onClick={() => setOpen(true)} >
                 Open
             </button>
+            <button className="" onClick={() => refetch()} >
+                Open
+            </button>
             <PropertyForm isOpen={isOpen} setIsOpen={setOpen} />
         </>
     );

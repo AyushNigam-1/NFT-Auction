@@ -1,9 +1,8 @@
-import { PropertyData } from "../types";
+import { PropertyData, PropertyFormData, RawPropertyAccount } from "../types";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { BN, web3 } from "@coral-xyz/anchor";
 import { useProgram } from "./useProgram";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { getMintProgramId } from "../utils";
 
 export const useProgramActions = () => {
@@ -56,23 +55,15 @@ export const useProgramActions = () => {
     // }
 
 
-    async function getAllProperties(): Promise<PropertyData[]> {
-
+    async function getAllProperties() {
         try {
-            const properties = await (program!.account as any).property.all();
+            console.log("Fetching properties from Solana...");
+            // 1. Fetch all on-chain accounts
+            const rawProperties = await program!.account.property.all()
+            return rawProperties
 
-            const formattedProperties: PropertyData[] = properties.map((prop: any) => ({
-                publicKey: prop.publicKey,
-                owner: prop.account.owner,
-                mint: prop.account.mint,
-                totalShares: prop.account.totalShares.toBigInt(), // u64 → bigint
-                bump: prop.account.bump,
-            }));
-
-            console.log(`Fetched ${formattedProperties.length} properties`);
-            return formattedProperties;
         } catch (error) {
-            console.error("Error fetching properties:", error);
+            console.error("❌ Error in getAllProperties:", error);
             return [];
         }
     }
@@ -82,32 +73,19 @@ export const useProgramActions = () => {
         mintPubkey: PublicKey,
         metadata_uri: string
     ) {
+
         if (!wallet.connected || !wallet.publicKey) {
             throw new Error("Wallet not connected");
         }
-
-        const tokenProgramId = getMintProgramId(mintPubkey)
-
-        const [propertyPda] = PublicKey.findProgramAddressSync(
-            [Buffer.from("property"), wallet.publicKey.toBuffer()],
-            PROGRAM_ID
-        );
-
-        const ownerTokenAccount = getAssociatedTokenAddressSync(
-            mintPubkey,
-            wallet.publicKey
-        );
+        // console.log(mintPubkey)
+        const tokenProgramId = await getMintProgramId(mintPubkey)
 
         const tx = await program!.methods
             .createProperty(new BN(totalShares), metadata_uri)
             .accounts({
                 owner: wallet.publicKey,
-                property: propertyPda,
                 mint: mintPubkey,
-                ownerTokenAccount,
-                systemProgram: web3.SystemProgram,
                 tokenProgram: tokenProgramId,
-                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
             }).rpc()
         return tx;
 

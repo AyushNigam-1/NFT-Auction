@@ -6,6 +6,7 @@ pub struct PropertyCreated {
     pub property: Pubkey,
     pub mint: Pubkey,
     pub total_shares: u64,
+    pub metadata_uri: String,
 }
 
 #[event]

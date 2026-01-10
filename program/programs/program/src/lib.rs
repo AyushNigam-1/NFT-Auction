@@ -5,7 +5,7 @@ mod events;
 mod states;
 use crate::{contexts::*, events::*};
 use anchor_lang::prelude::*;
-use anchor_spl::token::{mint_to, MintTo};
+use anchor_spl::token_interface::{transfer_checked, TransferChecked};
 
 declare_id!("Dh43TjNE2obrC8ZZXgvjitekaDiLmnnTCLTqLwziWnwU"); // Replace after deploy
 
@@ -22,22 +22,27 @@ pub mod yieldhome {
         property.owner = ctx.accounts.owner.key();
         property.mint = ctx.accounts.mint.key();
         property.total_shares = total_shares;
+        property.metadata_uri = metadata_uri.clone();
         property.bump = ctx.bumps.property;
-        property.metadata_uri = metadata_uri;
-        // Mint all shares to owner initially
-        let cpi_accounts = MintTo {
-            mint: ctx.accounts.mint.to_account_info(),
-            to: ctx.accounts.owner_token_account.to_account_info(), // Assume owner ATA
+        let decimals = ctx.accounts.mint.decimals;
+        // Safe CPI: Transfer initial shares from owner → vault (with decimals check)
+        let cpi_accounts = TransferChecked {
+            from: ctx.accounts.owner_token_account.to_account_info(),
+            to: ctx.accounts.vault_token_account.to_account_info(),
+            mint: ctx.accounts.mint.to_account_info(), // ← Required for checked
             authority: ctx.accounts.owner.to_account_info(),
         };
-        let cpi_program = ctx.accounts.token_program.to_account_info();
-        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        mint_to(cpi_ctx, total_shares)?;
+
+        let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
+
+        // Transfer with decimals (use your mint's decimals, e.g. 6)
+        transfer_checked(cpi_ctx, total_shares, decimals)?; // ← Amount, decimals
 
         emit!(PropertyCreated {
             property: property.key(),
             mint: ctx.accounts.mint.key(),
             total_shares,
+            metadata_uri,
         });
 
         Ok(())

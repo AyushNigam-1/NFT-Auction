@@ -2,8 +2,8 @@ import { useWallet, useConnection, useAnchorWallet } from "@solana/wallet-adapte
 import { PublicKey } from "@solana/web3.js";
 import { useMemo } from "react";
 import idl from "../target/idl/yieldhome.json";
-import type { Yieldhome } from "../target/types/yieldhome";
 import { AnchorProvider, setProvider, Program } from "@coral-xyz/anchor";
+import { Yieldhome } from "../target/types/yieldhome";
 
 export const useProgram = () => {
     const { connection } = useConnection();
@@ -27,7 +27,7 @@ export const useProgram = () => {
     setProvider(provider!);
     const program = useMemo(() => {
         if (!provider) return null;
-        return new Program(idl as Yieldhome, provider);
+        return new Program<Yieldhome>(idl as any, provider);
     }, [provider]);
 
     const getEscrowStatePDA = (initializerKey: PublicKey, uniqueSeed: Buffer) => {
@@ -61,6 +61,7 @@ export const useProgram = () => {
         );
         return pda;
     };
+
     return {
         getVaultPDA,
         getEscrowStatePDA,

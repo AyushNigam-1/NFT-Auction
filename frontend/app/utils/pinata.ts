@@ -1,18 +1,32 @@
+import axios from "axios";
+import { PropertyFormData } from "../types";
 
-import { PinataSDK } from "pinata";
+export const uploadFileToPinata = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
 
-const pinata = new PinataSDK({
-    pinataJwt: process.env.NEXT_PUBLIC_PINATA_JWT!, // Use JWT (recommended)
-    pinataGateway: process.env.NEXT_PUBLIC_PINATA_GATEWAY!, // e.g., "mydomain.mypinata.cloud"
-});
+    const response = await axios.post("/api/file", formData, {
+        headers: {
+            "Content-Type": "multipart/form-data", // Explicitly set this for clarity
+        },
+    });
 
-export const uploadToPinata = async (file: File): Promise<string> => {
-    try {
-        const file = new File(["hello"], "Testing.txt", { type: "text/plain" });
-        const upload = await pinata.upload.public.file(file);
-        return upload.cid;
-    } catch (error) {
-        console.error("Image upload failed:", error);
-        throw new Error("Failed to upload image to Pinata");
-    }
+    return response.data.url;
 };
+
+export const uploadMetadataToPinata = async (metadata: any): Promise<string> => {
+    const response = await axios.post("/api/json", metadata);
+
+    return response.data.url;
+};
+
+async function fetchPropertyMetadata(uri: string): Promise<PropertyFormData | undefined> {
+    try {
+        const response = await fetch(uri);
+        if (!response.ok) throw new Error(`Status ${response.status}`);
+        const metadata = await response.json();
+        return metadata;
+    } catch (error) {
+        console.warn(`⚠️ Failed to fetch metadata from ${uri}`, error);
+    }
+}
