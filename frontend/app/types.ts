@@ -1,6 +1,7 @@
 import { PublicKey } from "@solana/web3.js";
 import { Dispatch, SetStateAction } from "react";
-import { BN } from "@coral-xyz/anchor";
+import { BN, IdlAccounts } from "@coral-xyz/anchor";
+import { Yieldhome } from "./target/types/yieldhome";
 export interface HeaderProps {
     title: string;
     refetch: () => void;
@@ -8,6 +9,15 @@ export interface HeaderProps {
     isFetching: boolean;
     setOpen?: Dispatch<SetStateAction<boolean>>
 }
+
+export type PropertyAccount = IdlAccounts<Yieldhome>["property"];
+
+// 2. This defines the shape of the object returned by .all()
+//    (which wraps the data with the PDA publicKey)
+export type PropertyItem = {
+    publicKey: PublicKey;
+    account: PropertyAccount;
+};
 
 interface PropertyAttribute {
     trait_type: string;
@@ -19,7 +29,7 @@ export interface PropertyFormData {
     symbol: string;
     description: string;
     image: File | null | string;          // e.g., "1.2 crore"
-    expected_yield: string;           // e.g., "6.5%"
+    expected_yield: number;           // e.g., "6.5%"
     documents: File[];              // Array of document URLs
     attributes: PropertyAttribute[];   // Array of key-value attributes
 }

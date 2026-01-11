@@ -3,25 +3,32 @@ mod constants;
 mod contexts;
 mod events;
 mod states;
-use crate::{contexts::*, events::*};
+use crate::{constants::*, contexts::*, events::*};
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{transfer_checked, TransferChecked};
+use anchor_spl::token_interface::{close_account, transfer_checked, CloseAccount, TransferChecked};
 
 declare_id!("Dh43TjNE2obrC8ZZXgvjitekaDiLmnnTCLTqLwziWnwU"); // Replace after deploy
 
 #[program]
 pub mod yieldhome {
+
     use super::*;
 
     pub fn create_property(
         ctx: Context<CreateProperty>,
         total_shares: u64,
+        name: String,
+        thumbnail_uri: String,
+        yield_percentage: u16,
         metadata_uri: String,
     ) -> Result<()> {
         let property = &mut ctx.accounts.property;
         property.owner = ctx.accounts.owner.key();
         property.mint = ctx.accounts.mint.key();
         property.total_shares = total_shares;
+        property.name = name;
+        property.thumbnail_uri = thumbnail_uri;
+        property.yield_percentage = yield_percentage;
         property.metadata_uri = metadata_uri.clone();
         property.bump = ctx.bumps.property;
         let decimals = ctx.accounts.mint.decimals;
@@ -44,6 +51,54 @@ pub mod yieldhome {
             total_shares,
             metadata_uri,
         });
+
+        Ok(())
+    }
+
+    pub fn delete_property(ctx: Context<DeleteProperty>) -> Result<()> {
+        // 1. Prepare PDA Signer Seeds
+        let owner_key = ctx.accounts.owner.key();
+        let bump = ctx.accounts.property.bump;
+        let signer_seeds: &[&[&[u8]]] = &[&[PROPERTY_SEED, owner_key.as_ref(), &[bump]]];
+
+        // 2. Check Balance
+        let amount = ctx.accounts.vault_token_account.amount;
+
+        // 3. Transfer Tokens (Only if > 0)
+        if amount > 0 {
+            let transfer_accounts = TransferChecked {
+                from: ctx.accounts.vault_token_account.to_account_info(),
+                mint: ctx.accounts.mint.to_account_info(),
+                to: ctx.accounts.owner_token_account.to_account_info(),
+                authority: ctx.accounts.property.to_account_info(),
+            };
+
+            let transfer_ctx = CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                transfer_accounts,
+                signer_seeds,
+            );
+
+            // Transfer everything back to owner
+            transfer_checked(transfer_ctx, amount, ctx.accounts.mint.decimals)?;
+        }
+
+        // 4. Close the Vault Account
+        let close_accounts = CloseAccount {
+            account: ctx.accounts.vault_token_account.to_account_info(),
+            destination: ctx.accounts.owner.to_account_info(),
+            authority: ctx.accounts.property.to_account_info(),
+        };
+
+        let close_ctx = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            close_accounts,
+            signer_seeds,
+        );
+
+        close_account(close_ctx)?;
+
+        // 5. The 'property' PDA is closed automatically via #[account(close = owner)]
 
         Ok(())
     }

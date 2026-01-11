@@ -6,15 +6,20 @@ import Header from "@/app/components/ui/Header";
 import { useQuery } from "@tanstack/react-query";
 import { useProgramActions } from "@/app/hooks/useProgramActions";
 import PropertyForm from "@/app/components/ui/PropertyForm";
+import { useMutations } from "@/app/hooks/useMutations";
+import PropertyDetails from "@/app/components/ui/PropertyDetails";
+import { PropertyItem } from "@/app/types";
 
 
-export default function MyNFTsPage() {
+export default function page() {
 
     const wallet = useWallet();
     const { getAllProperties } = useProgramActions()
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState("");
     const [isOpen, setOpen] = useState(false)
+    const [searchQuery, setSearchQuery] = useState<string | null>("")
+    const [property, setProperty] = useState<PropertyItem>()
 
     const {
         data: properties,
@@ -31,14 +36,39 @@ export default function MyNFTsPage() {
     console.log("subscribers", properties)
 
     return (
-        <>
-            <button className="" onClick={() => setOpen(true)} >
+        <div className="space-y-4">
+            {/* <button className="" onClick={() => setOpen(true)} >
                 Open
-            </button>
-            <button className="" onClick={() => refetch()} >
+            </button> */}
+            {/* <button className="" onClick={() => refetch()} >
                 Open
-            </button>
-            <PropertyForm isOpen={isOpen} setIsOpen={setOpen} />
-        </>
+            </button> */}
+            <Header isFetching={isFetching} refetch={refetch} title="Properties" setSearchQuery={setSearchQuery} />
+            <div className="grid grid-cols-5">
+                {
+                    properties?.map((property) => {
+                        return (
+
+                            <div key={property.publicKey.toBase58()} className="p-3 rounded-xl bg-white/5 space-y-4 transition-all delay-50 cursor-pointer" onClick={() => { setProperty(property); setOpen(true) }} >
+                                <img
+                                    //  src={property.account.thumbnailUri}
+                                    src="https://images.pexels.com/photos/87223/pexels-photo-87223.jpeg?cs=srgb&dl=pexels-marketingtuig-87223.jpg&fm=jpg"
+                                    alt="" className="w-md rounded-xl" />
+                                <h5 className="font-bold text-xl">
+                                    {property.account.name.split("-")[0]}
+                                </h5>
+                                <p className="text-gray-300">
+                                    {property.account.shortDescription}
+                                </p>
+                            </div>
+                        )
+                    })
+                }
+            </div>
+
+            {/* <PropertyForm isOpen={isOpen} setIsOpen={setOpen} /> */}
+            <PropertyDetails open={isOpen} property={property!} setOpen={setOpen} />
+
+        </div>
     );
 }

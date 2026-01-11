@@ -10,6 +10,13 @@ pub struct Property {
     #[max_len(200)] // ← This fixes the error
     pub metadata_uri: String,
     pub bump: u8,
+    #[max_len(50)]
+    pub name: String, // e.g., "Sunshine Apartments - Pune" (prefix 4 + 50)
+
+    #[max_len(150)]
+    pub thumbnail_uri: String, // Small preview image URL
+
+    pub yield_percentage: u16, // 1-2 sentence teaser (max_len=200)
 }
 
 #[account]

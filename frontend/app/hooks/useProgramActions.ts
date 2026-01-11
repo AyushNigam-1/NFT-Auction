@@ -1,9 +1,10 @@
-import { PropertyData, PropertyFormData, RawPropertyAccount } from "../types";
+import { PropertyData, PropertyFormData, PropertyItem, RawPropertyAccount } from "../types";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { BN, web3 } from "@coral-xyz/anchor";
 import { useProgram } from "./useProgram";
 import { getMintProgramId } from "../utils";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 export const useProgramActions = () => {
     const wallet = useWallet()
@@ -55,13 +56,11 @@ export const useProgramActions = () => {
     // }
 
 
-    async function getAllProperties() {
+    async function getAllProperties(): Promise<PropertyItem[]> {
         try {
             console.log("Fetching properties from Solana...");
-            // 1. Fetch all on-chain accounts
             const rawProperties = await program!.account.property.all()
             return rawProperties
-
         } catch (error) {
             console.error("❌ Error in getAllProperties:", error);
             return [];
@@ -71,6 +70,10 @@ export const useProgramActions = () => {
     async function createProperty(
         totalShares: number | BN,
         mintPubkey: PublicKey,
+        name: string,
+        thumbnailUri: string,
+        shortDescription: string,
+        yieldPercentage: number,
         metadata_uri: string
     ) {
 
@@ -81,7 +84,14 @@ export const useProgramActions = () => {
         const tokenProgramId = await getMintProgramId(mintPubkey)
 
         const tx = await program!.methods
-            .createProperty(new BN(totalShares), metadata_uri)
+            .createProperty(
+                new BN(totalShares),
+                name,
+                thumbnailUri,
+                shortDescription,
+                yieldPercentage,
+                metadata_uri,
+            )
             .accounts({
                 owner: wallet.publicKey,
                 mint: mintPubkey,
@@ -90,5 +100,34 @@ export const useProgramActions = () => {
         return tx;
 
     }
-    return { createProperty, getAllProperties }
+
+    async function deleteProperty(mintPubkey: PublicKey) {
+        if (!wallet.connected || !wallet.publicKey) {
+            throw new Error("Wallet not connected");
+        }
+
+        try {
+            // 1. Get the correct Token Program (Legacy or Token-2022)
+            const tokenProgramId = await getMintProgramId(mintPubkey);
+
+            console.log("Deleting property and closing vault...");
+
+            const tx = await program!.methods
+                .deleteProperty()
+                .accounts({
+                    owner: wallet.publicKey,
+                    mint: mintPubkey,
+                    tokenProgram: tokenProgramId,
+                })
+                .rpc();
+
+            console.log("✅ Property deleted successfully. Signature:", tx);
+            return tx;
+
+        } catch (error) {
+            console.error("❌ Error deleting property:", error);
+            throw error;
+        }
+    }
+    return { createProperty, deleteProperty, getAllProperties }
 }

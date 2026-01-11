@@ -101,7 +101,7 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                             leaveFrom="opacity-100 scale-100 translate-y-0"
                             leaveTo="opacity-0 scale-90 translate-y-12"
                         >
-                            <DialogPanel className="w-full max-w-3xl max-h-[90vh] overflow-y-auto transform rounded-2xl bg-white/5 p-6 transition-all font-inter text-white relative space-y-6 border border-gray-800 shadow-2xl">
+                            <DialogPanel className="w-full max-w-3xl max-h-[90vh] overflow-y-auto transform rounded-2xl bg-gray-800 p-6 transition-all font-inter text-white relative space-y-6 border border-gray-800 shadow-2xl">
                                 <DialogTitle as="div" className="flex items-center justify-between">
                                     <h1 className="text-2xl font-bold text-gray-200">
                                         Add Property

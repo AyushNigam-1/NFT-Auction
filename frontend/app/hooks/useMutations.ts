@@ -56,6 +56,10 @@ export const useMutations = () => {
                 const txSig = await programActions.createProperty(
                     totalShares,
                     new PublicKey("qsKv7R4yhPanCgBcgLmH9gBcnWTbw2ANLoMvTZD3JTi"),
+                    metadata.name,
+                    "https://gold-endless-fly-679.mypinata.cloud/ipfs/bafkreib4zxgg2ecg7nahjocwoja7tpqflsrl7yug4c2zw2lm2nkgvoqroq",
+                    metadata.description,
+                    metadata.expected_yield,
                     "https://gold-endless-fly-679.mypinata.cloud/ipfs/bafkreic5pezhgydaxpv2wvuhphkfjtrpfsk2n45ozmkucdtrb6gggfzy3m",
                 );
 
@@ -75,5 +79,36 @@ export const useMutations = () => {
             // toast.error("Failed to upload assets.");
         },
     });
-    return { createProperty }
+
+    const deleteProperty = useMutation({
+        mutationKey: ["deleteProperty"],
+
+        // The actual function call
+        mutationFn: async (mintPubkey: PublicKey) => {
+            const tx = await programActions.deleteProperty(mintPubkey);
+            return tx;
+        },
+
+        // ✅ What to do when successful
+        onSuccess: (signature) => {
+            console.log("Deletion confirmed:", signature);
+            // toast.success("Property deleted successfully!");
+
+            // 🔄 Refresh the list of properties automatically
+            // queryClient.invalidateQueries({ queryKey: ["properties"] });
+        },
+
+        // ❌ What to do on error
+        onError: (error: any) => {
+            console.error("Deletion failed:", error);
+
+            // Extract a readable error message if possible
+            const message = error.message?.includes("0x1771") // specific constraint error code?
+                ? "You are not the owner of this property."
+                : "Failed to delete property. Check console.";
+
+            // toast.error(message);
+        },
+    });
+    return { createProperty, deleteProperty }
 }

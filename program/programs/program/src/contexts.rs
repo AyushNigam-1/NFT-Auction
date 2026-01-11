@@ -50,6 +50,48 @@ pub struct CreateProperty<'info> {
 }
 
 #[derive(Accounts)]
+pub struct DeleteProperty<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [PROPERTY_SEED, owner.key().as_ref()],
+        bump = property.bump,
+        constraint = property.owner == owner.key(),
+        close = owner, // Closes the Property PDA automatically
+    )]
+    pub property: Account<'info, Property>,
+
+    // 👇 ADDED: Needed for transfer_checked
+    #[account(
+        address = property.mint 
+    )]
+    pub mint: InterfaceAccount<'info, Mint>,
+
+    #[account(
+        mut,
+        associated_token::mint = property.mint,
+        associated_token::authority = property,
+        associated_token::token_program = token_program,
+        // ❌ REMOVED: close = owner (We do manual close)
+    )]
+    pub vault_token_account: InterfaceAccount<'info, TokenAccount>,
+
+    // 👇 ADDED: Destination for the tokens
+    #[account(
+        mut,
+        associated_token::mint = property.mint,
+        associated_token::authority = owner,
+        associated_token::token_program = token_program,
+    )]
+    pub owner_token_account: InterfaceAccount<'info, TokenAccount>,
+
+    pub token_program: Interface<'info, TokenInterface>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 pub struct BuyShares<'info> {
     #[account(mut)]
     pub buyer: Signer<'info>,
