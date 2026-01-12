@@ -93,37 +93,53 @@ pub struct DeleteProperty<'info> {
 
 #[derive(Accounts)]
 pub struct BuyShares<'info> {
+    /// The buyer of the shares (pays SOL and receives shares)
     #[account(mut)]
     pub buyer: Signer<'info>,
 
-    #[account(
-        mut,
-        seeds = [PROPERTY_SEED, property.owner.as_ref()],
-        bump = property.bump,
-    )]
+    /// The property being bought into
+    #[account(mut)]
     pub property: Account<'info, Property>,
 
+    /// The mint of the shared token
+    pub mint: InterfaceAccount<'info, Mint>,
+
+    /// Vault token account (holds the available shares for this property)
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = property,
+        associated_token::token_program = token_program,
+    )]
+    pub vault_token_account: InterfaceAccount<'info, TokenAccount>,
+
+    /// Buyer's token account (receives the purchased shares)
     #[account(
         init_if_needed,
         payer = buyer,
-        space = 8 + 32 + 32 + 8 + 8 + 1,
-        seeds = [HOLDER_SEED, buyer.key().as_ref(), property.key().as_ref()],
-        bump,
+        associated_token::mint = mint,
+        associated_token::authority = buyer,
+        associated_token::token_program = token_program,
     )]
-    pub holder: Account<'info, ShareHolder>,
-
-    #[account(mut)]
-    // 👇 FIX 3: Must be InterfaceAccount if using token_interface::TokenAccount
     pub buyer_token_account: InterfaceAccount<'info, TokenAccount>,
 
-    #[account(mut)]
-    /// CHECK: Vault holds SOL for yields later
-    pub vault: UncheckedAccount<'info>,
+    /// CHECK: This is the original property owner, used only for PDA seed derivation.
+    #[account(mut)]  // ← Mut for receiving SOL
+    pub owner: SystemAccount<'info>,
 
-    // 👇 FIX 4: Update this to support Token-2022 mints too
+    /// ShareHolder record (tracks buyer's shares in this property)
+    #[account(
+        init_if_needed,
+        payer = buyer,
+        space = 8 + ShareHolder::INIT_SPACE,
+        seeds = [SHAREHOLDER_SEED, buyer.key().as_ref(), property.key().as_ref()],
+        bump,
+    )]
+    pub share_holder: Account<'info, ShareHolder>,
+
     pub token_program: Interface<'info, TokenInterface>,
-
     pub system_program: Program<'info, System>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[derive(Accounts)]

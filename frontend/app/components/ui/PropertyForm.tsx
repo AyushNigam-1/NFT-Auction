@@ -17,8 +17,8 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
         description: "Modern 2BHK in Hinjewadi with gym and pool",
         image: null,
         address: "Hinjewadi Phase 1, Pune, Maharashtra",
-        total_value_inr: "1.2 crore",
-        expected_yield: "6.5%",
+        total_value: 10000000,
+        expected_yield: 6.5,
         documents: [],
         attributes: [
             { trait_type: "Bedrooms", value: "2" },
@@ -166,8 +166,8 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                                         <InputGroup
                                             label="Total Value (INR)"
                                             name="total_value_inr"
-                                            value={formData.total_value_inr}
-                                            onChange={(e) => handleInputChange("total_value_inr", e.target.value)}
+                                            value={formData.total_value}
+                                            onChange={(e) => handleInputChange("total_value", e.target.value)}
                                             placeholder="e.g., 1.2 crore"
                                         />
                                         <InputGroup

@@ -9,6 +9,7 @@ import PropertyForm from "@/app/components/ui/PropertyForm";
 import { useMutations } from "@/app/hooks/useMutations";
 import PropertyDetails from "@/app/components/ui/PropertyDetails";
 import { PropertyItem } from "@/app/types";
+import { Banknote, Wallet } from "lucide-react";
 
 
 export default function page() {
@@ -40,15 +41,14 @@ export default function page() {
             {/* <button className="" onClick={() => setOpen(true)} >
                 Open
             </button> */}
-            {/* <button className="" onClick={() => refetch()} >
+            <button className="" onClick={() => refetch()} >
                 Open
-            </button> */}
+            </button>
             <Header isFetching={isFetching} refetch={refetch} title="Properties" setSearchQuery={setSearchQuery} />
             <div className="grid grid-cols-5">
                 {
                     properties?.map((property) => {
                         return (
-
                             <div key={property.publicKey.toBase58()} className="p-3 rounded-xl bg-white/5 space-y-4 transition-all delay-50 cursor-pointer" onClick={() => { setProperty(property); setOpen(true) }} >
                                 <img
                                     //  src={property.account.thumbnailUri}
@@ -57,9 +57,12 @@ export default function page() {
                                 <h5 className="font-bold text-xl">
                                     {property.account.name.split("-")[0]}
                                 </h5>
-                                <p className="text-gray-300">
-                                    {property.account.shortDescription}
-                                </p>
+                                {/* <span className="p-2 bg-green-800 text-green-200 " > */}
+                                {/* <p className="text-sm font-semibold">Starting from</p> */}
+                                {/* <p className="bg-green-900 text-green-200 p-2 rounded-xl flex gap-1 w-min">
+                                    <Banknote />   {property.account.pricePerShares.toNumber()}
+                                </p> */}
+                                {/* </span> */}
                             </div>
                         )
                     })

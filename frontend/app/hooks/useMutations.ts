@@ -3,6 +3,7 @@ import { useProgramActions } from "./useProgramActions";
 import { PropertyFormData } from "../types";
 import { uploadFileToPinata, uploadMetadataToPinata } from "../utils/pinata";
 import { PublicKey } from "@solana/web3.js";
+import { BN, IdlAccounts } from "@coral-xyz/anchor";
 
 export const useMutations = () => {
     const programActions = useProgramActions()
@@ -18,6 +19,7 @@ export const useMutations = () => {
             mint?: string
         }) => {
             try {
+                console.log("metadata", metadata)
                 // let mainImageUrl = "";
                 // if (metadata.image && metadata.image instanceof File) {
                 //     console.log("Uploading main image...");
@@ -58,7 +60,7 @@ export const useMutations = () => {
                     new PublicKey("qsKv7R4yhPanCgBcgLmH9gBcnWTbw2ANLoMvTZD3JTi"),
                     metadata.name,
                     "https://gold-endless-fly-679.mypinata.cloud/ipfs/bafkreib4zxgg2ecg7nahjocwoja7tpqflsrl7yug4c2zw2lm2nkgvoqroq",
-                    metadata.description,
+                    metadata.total_value / totalShares,
                     metadata.expected_yield,
                     "https://gold-endless-fly-679.mypinata.cloud/ipfs/bafkreic5pezhgydaxpv2wvuhphkfjtrpfsk2n45ozmkucdtrb6gggfzy3m",
                 );
@@ -110,5 +112,48 @@ export const useMutations = () => {
             // toast.error(message);
         },
     });
-    return { createProperty, deleteProperty }
+
+    const buyShares = useMutation({
+        mutationFn: async ({
+            propertyPubkey,
+            shares,
+            paidSol,
+            mintAddress,
+            owner,
+        }: {
+            propertyPubkey: PublicKey;
+            shares: number | BN;
+            paidSol: number | BN;
+            mintAddress: PublicKey,
+            owner: PublicKey,
+        }) => {
+            const txSig = await programActions.buyShares(
+                propertyPubkey,
+                new BN(shares),
+                new BN(paidSol),
+                mintAddress,
+                owner,
+            );
+
+            return { txSig };
+        },
+
+        onSuccess: (data, variables) => {
+            // toast.dismiss();
+            // toast.success(`Shares bought! Tx: ${data.txSig.slice(0, 8)}...`);
+
+            // // Invalidate/refetch related queries
+            // queryClient.invalidateQueries({ queryKey: ["property", variables.propertyPubkey.toBase58()] });
+            // queryClient.invalidateQueries({ queryKey: ["userBalance"] });
+            // queryClient.invalidateQueries({ queryKey: ["properties"] });
+        },
+
+        onError: (error: any) => {
+            // toast.dismiss();
+            // const msg = error.message || "Failed to buy shares";
+            // toast.error(msg.includes("insufficient funds") ? "Insufficient SOL balance" : msg);
+            // console.error("Buy shares error:", error);
+        },
+    });
+    return { createProperty, deleteProperty, buyShares }
 }

@@ -28,6 +28,8 @@ export interface PropertyFormData {
     name: string;
     symbol: string;
     description: string;
+    address: string;
+    total_value: number;
     image: File | null | string;          // e.g., "1.2 crore"
     expected_yield: number;           // e.g., "6.5%"
     documents: File[];              // Array of document URLs

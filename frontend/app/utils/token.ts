@@ -25,6 +25,9 @@
 // import { walletAdapterIdentity } from '@metaplex-foundation/umi-signer-wallet-adapters';
 // import { createMetadataAccountV3 } from '@metaplex-foundation/mpl-token-metadata';
 
+import { getAccount } from "@solana/spl-token";
+import { Connection, PublicKey } from "@solana/web3.js";
+
 // export const useTokenActions = () => {
 //     const { connection } = useConnection();
 //     const { publicKey, sendTransaction } = useWallet();
@@ -294,3 +297,32 @@
 //     revokeMintAuthority
 // };
 // };
+
+export async function getTokenAccountBalance(
+    connection: Connection,
+    tokenAccountAddress: PublicKey | string
+): Promise<{
+    // uiAmount: number | null;
+    amount: string;
+    // decimals: number;
+} | null> {
+    try {
+        // Convert string to PublicKey if needed
+        const accountPubkey =
+            typeof tokenAccountAddress === "string"
+                ? new PublicKey(tokenAccountAddress)
+                : tokenAccountAddress;
+
+        // Fetch the token account info
+        const accountInfo = await getAccount(connection, accountPubkey);
+
+        return {
+            // uiAmount: accountInfo.,         // Human-readable (with decimals applied)
+            amount: accountInfo.amount.toString(),  // Raw u64 as string (big numbers safe)
+            // decimals: accountInfo.mint,    // Mint decimals (e.g., 6)
+        };
+    } catch (error) {
+        console.error("Failed to fetch token balance:", error);
+        return null; // Return null on error (account doesn't exist, etc.)
+    }
+}

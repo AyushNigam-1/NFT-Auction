@@ -5,13 +5,23 @@ import React, { useState, useEffect } from "react";
 interface BuySharesCalculatorProps {
     totalValueInr: string;
     totalShares: number;
+    percentage: number;
+    setPercentage: (value: number) => void,
+    totalSol: number,
+    setTotalSol: (value: number) => void
 }
 
 const BuySharesCalculator: React.FC<BuySharesCalculatorProps> = ({
     totalValueInr,
     totalShares,
+    percentage,
+    setPercentage,
+    totalSol,
+    setTotalSol
+    // solPriceInr,
+    // setSolPriceInr
 }) => {
-    const [percentage, setPercentage] = useState<number>(1);
+    // const [percentage, setPercentage] = useState<number>(1);
     const [solPriceInr, setSolPriceInr] = useState<number | null>(null);
 
     useEffect(() => {
@@ -57,9 +67,16 @@ const BuySharesCalculator: React.FC<BuySharesCalculatorProps> = ({
     const costInInr = sharesWanted * pricePerShare;
 
     // Only show SOL price if we successfully fetched it
-    const costInSol = (solPriceInr && solPriceInr > 0)
-        ? (costInInr / solPriceInr).toFixed(4)
-        : "Updating...";
+    const costInSol = () => {
+        if ((solPriceInr && solPriceInr > 0)) {
+            const totalSol = (costInInr / solPriceInr).toFixed(4)
+            setTotalSol(Number(totalSol))
+            return totalSol
+        }
+        else {
+            return "Updating...";
+        }
+    }
 
     // 🛑 Loading State
     if (!totalValueInr || !totalShares) {
@@ -123,14 +140,12 @@ const BuySharesCalculator: React.FC<BuySharesCalculatorProps> = ({
                 <div className="flex justify-between text-gray-300 ">
                     <span>Estimated Cost (SOL):</span>
                     <span className="font-bold text-green-400 text-xl">
-                        {costInSol === "Updating..." ? <span className="text-sm text-yellow-500">Fetching Price...</span> : `${costInSol} SOL`}
+                        {costInSol() === "Updating..." ? <span className="text-sm text-yellow-500">Fetching Price...</span> : `${costInSol()} SOL`}
                     </span>
                 </div>
             </div>
 
-            <button className="w-full  py-4 bg-green-400 text-white font-bold text-lg rounded-xl shadow-lg">
-                Buy Now
-            </button>
+
         </div>
     );
 };

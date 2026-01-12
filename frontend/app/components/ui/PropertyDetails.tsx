@@ -3,12 +3,15 @@ import { fetchPropertyMetadata } from "@/app/utils/pinata";
 import { Dialog, DialogPanel, Transition, TransitionChild } from "@headlessui/react"
 import { useQuery } from "@tanstack/react-query";
 import { Banknote, Coins, CoinsIcon, Currency, File, Home, PieChart, TrendingUp, User } from "lucide-react";
-import React from "react"
+import React, { useState } from "react"
 import BuySharesCalculator from "./BuySharesCalculator";
 import { useMutations } from "@/app/hooks/useMutations";
+import Loader from "./Loader";
 
 const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: (open: boolean) => void, property: PropertyItem }) => {
-    const { deleteProperty } = useMutations()
+    const { deleteProperty, buyShares } = useMutations()
+    const [percentage, setPercentage] = useState<number>(1);
+    const [totalSol, setTotalSol] = useState<number>(0);
 
     const {
         data: metadata,
@@ -68,7 +71,7 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
                                 <div className='h-0.5 w-full bg-white/5' />
                                 <div className="grid grid-cols-2 gap-6">
 
-                                    <div className="flex gap-4">
+                                    <div className="flex gap-4 ">
                                         <span className="p-4 bg-green-300/5 rounded-full text-green-300">
                                             <User size={25} />
                                         </span>
@@ -87,15 +90,15 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
                                             <h6 className="font-semibold text-lg">{metadata?.address}</h6>
                                         </div>
                                     </div> */}
-                                    <div className="flex gap-4">
+                                    {/* <div className="flex gap-4">
                                         <span className="p-4 bg-green-300/5 rounded-full text-green-300">
                                             <Banknote size={25} />
                                         </span>
                                         <div className="space-y-1">
                                             <p className="text-gray-300" >Worth </p>
-                                            <h6 className="font-semibold text-lg">{metadata?.total_value_inr}</h6>
+                                            <h6 className="font-semibold text-lg">{metadata?.total_value}</h6>
                                         </div>
-                                    </div>
+                                    </div> */}
                                     <div className="flex gap-4">
                                         <span className="p-4 bg-green-300/5 rounded-full text-green-300">
                                             <TrendingUp size={25} />
@@ -131,7 +134,7 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
                                         </span>
                                         <div className="space-y-1">
                                             <p className="text-gray-300" >Shares </p>
-                                            <h6 className="font-semibold text-lg">{metadata?.legal_documents.length}</h6>
+                                            {/* <h6 className="font-semibold text-lg">{metadata?.legal_documents.length}</h6> */}
                                         </div>
                                     </div>
 
@@ -153,7 +156,14 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
                                 </div>
                                 <div className='h-0.5 w-full bg-white/5' />
 
-                                <BuySharesCalculator totalValueInr={metadata?.total_value_inr} totalShares={100000} />
+                                <BuySharesCalculator percentage={percentage} setPercentage={setPercentage} totalValueInr={metadata?.total_value_inr.toString()!} totalShares={100000} setTotalSol={setTotalSol} totalSol={totalSol} />
+                                <button onClick={() => {
+                                    buyShares.mutate({ mintAddress: property.account.mint, owner: property.account.owner, propertyPubkey: property.publicKey, shares: percentage, paidSol: totalSol })
+                                }} className="w-full  py-4 bg-green-400 text-white font-bold text-lg rounded-xl shadow-lg">
+                                    {buyShares.isPending ? <Loader /> : ""}
+
+                                    Buy Now
+                                </button>
                                 <div onClick={() => deleteProperty.mutate(property.account.mint)} >
                                     Delete
                                 </div>
