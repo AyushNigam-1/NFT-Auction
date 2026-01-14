@@ -9,7 +9,7 @@ import PropertyForm from "@/app/components/ui/PropertyForm";
 import { useMutations } from "@/app/hooks/useMutations";
 import PropertyDetails from "@/app/components/ui/PropertyDetails";
 import { PropertyItem } from "@/app/types";
-import { Banknote, Wallet } from "lucide-react";
+import { Banknote, TrendingUp, Wallet } from "lucide-react";
 
 
 export default function page() {
@@ -41,28 +41,51 @@ export default function page() {
             {/* <button className="" onClick={() => setOpen(true)} >
                 Open
             </button> */}
-            <button className="" onClick={() => refetch()} >
+            {/* <button className="" onClick={() => refetch()} >
                 Open
-            </button>
+            </button> */}
             <Header isFetching={isFetching} refetch={refetch} title="Properties" setSearchQuery={setSearchQuery} />
             <div className="grid grid-cols-5">
                 {
                     properties?.map((property) => {
                         return (
-                            <div key={property.publicKey.toBase58()} className="p-3 rounded-xl bg-white/5 space-y-4 transition-all delay-50 cursor-pointer" onClick={() => { setProperty(property); setOpen(true) }} >
+
+                            <div className="max-w-sm rounded-2xl space-y-3 overflow-hidden shadow-lg bg-white/5 p-3 hover:shadow-xl transition-shadow duration-300 cursor-pointer" onClick={() => { setProperty(property); setOpen(true) }}>
+
                                 <img
-                                    //  src={property.account.thumbnailUri}
+                                    className="w-full  rounded-2xl"
                                     src="https://images.pexels.com/photos/87223/pexels-photo-87223.jpeg?cs=srgb&dl=pexels-marketingtuig-87223.jpg&fm=jpg"
-                                    alt="" className="w-md rounded-xl" />
-                                <h5 className="font-bold text-xl">
+                                //   alt={name} 
+                                />
+
+                                {/* 2. Name of the Property */}
+                                <h3 className="text-xl font-bold text-gray-200 truncate">
                                     {property.account.name.split("-")[0]}
-                                </h5>
-                                {/* <span className="p-2 bg-green-800 text-green-200 " > */}
-                                {/* <p className="text-sm font-semibold">Starting from</p> */}
-                                {/* <p className="bg-green-900 text-green-200 p-2 rounded-xl flex gap-1 w-min">
-                                    <Banknote />   {property.account.pricePerShares.toNumber()}
-                                </p> */}
-                                {/* </span> */}
+                                </h3>
+                                {/* <h6 className=" text-gray-400 text-sm line-clamp-1">
+                                    Lorem ipsum dolor sit amet Lorem ipsum dolor, sit amet consectetur adipisicing elit. Officiis voluptates minus id.
+                                </h6> */}
+
+
+                                <div className='h-0.5 w-full bg-white/10' />
+
+                                {/* 3 & 4. Cost and Yield (Layout: Flex Row) */}
+                                <div className="flex items-center gap-3 justify-between">
+                                    <div className="flex flex-col gap-2 ">
+                                        <span className="text-xs text-gray-300 uppercase tracking-wider"> Price / Share</span>
+                                        <div className="flex items-center gap-2">
+                                            <Banknote size={23} className="text-green-300" />
+                                            <span className="text-xl font-bold text-white">$1K</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-2 ">
+                                        <span className="text-xs text-gray-300 uppercase tracking-wider"> Annual Yield</span>
+                                        <div className="flex items-center gap-2">
+                                            <TrendingUp size={23} className="text-green-300" />
+                                            <span className="text-xl font-bold text-white"> {property.account.yieldPercentage}%</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )
                     })
