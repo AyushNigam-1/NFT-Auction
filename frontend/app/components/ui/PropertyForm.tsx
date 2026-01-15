@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import InputGroup from "./Input";
 import { Dialog, DialogPanel, DialogTitle, Transition } from "@headlessui/react";
-import { X, Zap } from "lucide-react";
+import { Delete, Recycle, Trash, X, Zap } from "lucide-react";
 import { useMutations } from "@/app/hooks/useMutations";
 import Loader from "./Loader";
 import { PropertyFormData } from "@/app/types";
@@ -15,14 +15,17 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
         name: "Sunshine Apartments - Pune",
         symbol: "SUNAPT",
         description: "Modern 2BHK in Hinjewadi with gym and pool",
-        image: null,
+        images: [],
         address: "Hinjewadi Phase 1, Pune, Maharashtra",
-        total_value: 10000000,
-        expected_yield: 6.5,
+        total_value: 0,
+        expected_yield: 0,
+        type: "",
+        total_share: 0,
+        rent: 0,
         documents: [],
         attributes: [
-            { trait_type: "Bedrooms", value: "2" },
-            { trait_type: "Area", value: "950 sqft" },
+            // { trait_type: "Bedrooms", value: "2" },
+            // { trait_type: "Area", value: "950 sqft" },
         ],
     });
 
@@ -45,7 +48,13 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                 newDocs[index] = value as any;
                 return { ...prev, documents: newDocs };
             }
-
+            if (field === "images" && index !== undefined) {
+                const newDocs = [...prev.images];
+                // Cast value to any or File to satisfy TS, 
+                // simply assign whatever comes from the input (File or null)
+                newDocs[index] = value as any;
+                return { ...prev, images: newDocs };
+            }
             // Handle Attributes Array
             if (field === "attributes" && index !== undefined && subField) {
                 const newAttrs = [...prev.attributes];
@@ -59,20 +68,6 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                 [field]: value,
             };
         });
-    };
-
-    const addDocument = () => {
-        setFormData((prev) => ({
-            ...prev,
-            documents: [...prev.documents, null as any],
-        }));
-    };
-
-    const addAttribute = () => {
-        setFormData((prev) => ({
-            ...prev,
-            attributes: [...prev.attributes, { trait_type: "", value: "" }],
-        }));
     };
 
     return (
@@ -101,9 +96,9 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                             leaveFrom="opacity-100 scale-100 translate-y-0"
                             leaveTo="opacity-0 scale-90 translate-y-12"
                         >
-                            <DialogPanel className="w-full max-w-3xl max-h-[90vh] overflow-y-auto transform rounded-2xl bg-gray-800 p-6 transition-all font-inter text-white relative space-y-6 border border-gray-800 shadow-2xl">
+                            <DialogPanel className="w-full max-w-3xl max-h-[90vh] overflow-y-auto transform rounded-2xl bg-white/5 p-6 transition-all font-inter text-white relative space-y-6 border border-gray-800 shadow-2xl">
                                 <DialogTitle as="div" className="flex items-center justify-between">
-                                    <h1 className="text-2xl font-bold text-gray-200">
+                                    <h1 className="text-2xl font-bold text-gray-100">
                                         Add Property
                                     </h1>
                                     <button
@@ -125,12 +120,13 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                                         placeholder="e.g., Sunshine Apartments - Pune"
                                     />
                                     <InputGroup
-                                        label="Symbol"
-                                        name="symbol"
-                                        value={formData.symbol}
-                                        onChange={(e) => handleInputChange("symbol", e.target.value)}
-                                        placeholder="e.g., SUNAPT"
+                                        label="Full Address"
+                                        name="address"
+                                        value={formData.address}
+                                        onChange={(e) => handleInputChange("address", e.target.value)}
+                                        placeholder="Hinjewadi Phase 1, Pune..."
                                     />
+
                                     <InputGroup
                                         label="Description"
                                         name="description"
@@ -141,35 +137,25 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                                     />
 
                                     <div className="grid md:grid-cols-2 gap-6">
-                                        <InputGroup
-                                            label="Main Image"
-                                            name="image"
-                                            type="file"
-                                            // 2. FIXED: Do not pass 'value' to file input. 
-                                            // If you want to show the selected file name, render it in a separate <span> below
-                                            onChange={(e) => {
-                                                const file = (e.target as HTMLInputElement).files?.[0] || null;
-                                                handleInputChange("image", file);
-                                            }}
-                                            placeholder="Select image..."
-                                        />
-                                        <InputGroup
-                                            label="Full Address"
-                                            name="address"
-                                            value={formData.address}
-                                            onChange={(e) => handleInputChange("address", e.target.value)}
-                                            placeholder="Hinjewadi Phase 1, Pune..."
-                                        />
-                                    </div>
 
-                                    <div className="grid md:grid-cols-2 gap-6">
                                         <InputGroup
-                                            label="Total Value (INR)"
-                                            name="total_value_inr"
-                                            value={formData.total_value}
-                                            onChange={(e) => handleInputChange("total_value", e.target.value)}
-                                            placeholder="e.g., 1.2 crore"
+                                            label="Property Type"
+                                            name="symbol"
+                                            value={formData.type}
+                                            select={true}
+                                            options={[{ label: 'Rented', value: "Rented" }, { label: 'Vacant', value: "Vacant" }, { label: 'Self-Occupied', value: "Self Occupied" }, { label: 'Under Renovation', value: "Under Renovation" }]}
+                                            onChange={(e) => handleInputChange("type", e.target.value)}
+                                        // placeholder="e.g., SUNAPT"
                                         />
+                                        {/* <InputGroup
+                                            label="Property Status"
+                                            name="symbol"
+                                            select={true}
+                                            options={[{ label: 'Residential', value: "Residential" }, { label: 'Commercial', value: "Commercial" }]}
+                                            value={formData.status}
+                                            onChange={(e) => handleInputChange("status", e.target.value)}
+                                        // placeholder="e.g., SUNAPT"
+                                        /> */}
                                         <InputGroup
                                             label="Expected Annual Yield"
                                             name="expected_yield"
@@ -177,54 +163,187 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                                             onChange={(e) => handleInputChange("expected_yield", e.target.value)}
                                             placeholder="e.g., 6.5%"
                                         />
-                                    </div>
 
+                                        <InputGroup
+                                            label="Symbol"
+                                            name="symbol"
+                                            value={formData.symbol}
+                                            onChange={(e) => handleInputChange("symbol", e.target.value)}
+                                            placeholder="e.g., SUNAPT"
+                                        />
+                                        {/* </div> */}
+                                        {/* <div className="grid md:grid-cols-2 gap-6"> */}
+                                        <InputGroup
+                                            label="Total Value (USD)"
+                                            name="total_value_inr"
+                                            value={formData.total_value}
+                                            onChange={(e) => handleInputChange("total_value", e.target.value)}
+                                            placeholder="e.g., 1.2 crore"
+                                        />
+
+                                        <InputGroup
+                                            label="Rent Monthly (USD)"
+                                            name="symbol"
+                                            value={formData.rent}
+                                            onChange={(e) => handleInputChange("rent", e.target.value)}
+                                            placeholder="1000000"
+                                        />
+
+                                        <InputGroup
+                                            label="Total Shares"
+                                            name="total_share"
+                                            value={formData.total_share}
+                                            onChange={(e) => handleInputChange("total_share", e.target.value)}
+                                            placeholder="e.g., 1.2 crore"
+                                        />
+                                    </div>
+                                    {/* <div className='h-0.5 w-full bg-white/10' /> */}
+
+                                    <label className="block text-lg font-bold text-gray-700 dark:text-gray-100 ">
+                                        Property Images
+                                    </label>
+                                    {/* Image Grid Container */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+
+                                        {/* 1. Map through existing images (Previews) */}
+                                        {formData.images.map((img, index) => (
+                                            img ? (
+                                                <div key={index} className="relative aspect-square rounded-xl overflow-hidden group border border-white/10">
+                                                    {/* Image Preview */}
+                                                    <img
+                                                        src={URL.createObjectURL(img as unknown as Blob)}
+                                                        alt={`Preview ${index}`}
+                                                        className="w-full h-full object-cover"
+                                                    />
+
+                                                    {/* Overlay with Delete Button */}
+                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newImages = [...formData.images];
+                                                                newImages.splice(index, 1);
+                                                                setFormData(prev => ({ ...prev, images: newImages }));
+                                                            }}
+                                                            className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition"
+                                                        >
+                                                            <Trash className="w-5 h-5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : null
+                                        ))}
+
+                                        {/* 2. The "Add New" Placeholder Card */}
+                                        <div className="relative aspect-square rounded-xl border-2 border-dashed border-white/20 hover:border-green-400 hover:bg-white/5 transition-colors cursor-pointer flex flex-col items-center justify-center text-gray-400 hover:text-green-400">
+
+                                            {/* Invisible File Input covering the card */}
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            images: [...prev.images, file] // Append new file
+                                                        }));
+                                                    }
+                                                    // Reset input value to allow selecting same file again if needed
+                                                    e.target.value = '';
+                                                }}
+                                            />
+
+                                            {/* Visual Icon */}
+                                            <span className="text-3xl font-light">+</span>
+                                        </div>
+
+                                    </div>
                                     {/* Documents */}
-                                    <div className='h-0.5 w-full bg-white/10' />
-                                    <label className="block text-lg font-bold text-gray-700 dark:text-gray-300 ">
+                                    {/* <div className='h-0.5 w-full bg-white/10' /> */}
+                                    <label className="block text-lg font-bold text-gray-700 dark:text-gray-100 mb-4">
                                         Legal Documents
                                     </label>
 
-                                    {formData.documents.map((doc, index) => (
-                                        <div key={index}>
-                                            <InputGroup
-                                                label={`Document ${index + 1}`}
-                                                name={`doc-${index}`}
-                                                type="file"
-                                                // 3. FIXED: Removed value={doc}. File inputs must be uncontrolled.
-                                                onChange={(e) => {
-                                                    const input = e.target as HTMLInputElement;
-                                                    const file = input.files?.[0] || null;
-                                                    handleInputChange("documents", file, index);
-                                                }}
-                                                placeholder=""
-                                                classNames="mb-2"
-                                            />
-                                            {/* Optional: Visual confirmation that a file is stored in state */}
-                                            {doc && (
-                                                <p className="text-xs text-green-400 mb-4">
-                                                    Selected: {(doc as any).name}
-                                                </p>
-                                            )}
-                                        </div>
-                                    ))}
+                                    {/* Document Grid Container */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 
-                                    <button
-                                        type="button"
-                                        onClick={addDocument}
-                                        className="text-green-400 hover:text-green-500 font-medium"
-                                    >
-                                        + Add another document
-                                    </button>
+                                        {/* 1. Map through existing documents */}
+                                        {formData.documents.map((doc, index) => (
+                                            doc ? (
+                                                <div key={index} className="relative aspect-square rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center p-4 group">
+
+                                                    {/* Visual Icon for Document */}
+                                                    <div className="bg-gray-800 p-3 rounded-lg mb-2">
+                                                        {/* You can replace this SVG with a specific FileText icon */}
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                        </svg>
+                                                    </div>
+
+                                                    {/* Filename (Truncated) */}
+                                                    <p className="text-xs text-gray-300 text-center w-full truncate px-2 font-medium">
+                                                        {(doc as File).name}
+                                                    </p>
+                                                    <p className="text-[10px] text-gray-500 mt-1 uppercase">
+                                                        {(doc as File).name.split('.').pop()} File
+                                                    </p>
+
+                                                    {/* Overlay with Delete Button */}
+                                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl backdrop-blur-[2px]">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newDocs = [...formData.documents];
+                                                                newDocs.splice(index, 1);
+                                                                setFormData(prev => ({ ...prev, documents: newDocs }));
+                                                            }}
+                                                            className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition shadow-lg transform hover:scale-110"
+                                                        >
+                                                            <Trash className="w-5 h-5" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : null
+                                        ))}
+
+                                        {/* 2. The "Add Document" Placeholder Card */}
+                                        <div className="relative aspect-square rounded-xl border-2 border-dashed border-white/20 hover:border-blue-400 hover:bg-white/5 transition-all cursor-pointer flex flex-col items-center justify-center text-gray-400 hover:text-blue-400 group">
+
+                                            {/* Invisible File Input */}
+                                            <input
+                                                type="file"
+                                                // Accept PDFs and standard Docs
+                                                accept=".pdf,.doc,.docx,.txt"
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            documents: [...prev.documents, file]
+                                                        }));
+                                                    }
+                                                    e.target.value = '';
+                                                }}
+                                            />
+
+                                            {/* Visual Cue */}
+                                            <span className="text-3xl font-light group-hover:-translate-y-1 transition-transform duration-300">+</span>
+                                            {/* <span className="text-xs font-semibold">Upload Doc</span> */}
+                                        </div>
+
+                                    </div>
 
                                     {/* Attributes */}
-                                    <div className='h-0.5 w-full bg-white/10' />
-                                    <label className="block text-lg font-bold text-gray-700 dark:text-gray-300 ">
+                                    {/* <div className='h-0.5 w-full bg-white/10' /> */}
+                                    <label className="block text-lg font-bold text-gray-700 dark:text-gray-100 ">
                                         Property Attributes
                                     </label>
 
                                     {formData.attributes.map((attr, index) => (
-                                        <div key={index} className="grid md:grid-cols-2 gap-4 mb-4">
+                                        <div key={index} className="grid md:grid-cols-2 gap-4 ">
                                             <InputGroup
                                                 label="Trait Type"
                                                 name={`trait-${index}`}
@@ -248,7 +367,10 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
 
                                     <button
                                         type="button"
-                                        onClick={addAttribute}
+                                        onClick={() => setFormData((prev) => ({
+                                            ...prev,
+                                            attributes: [...prev.attributes, { trait_type: "", value: "" }],
+                                        }))}
                                         className="text-green-400 hover:text-green-500 font-medium"
                                     >
                                         + Add attribute
@@ -269,6 +391,6 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                     </div>
                 </div>
             </Dialog>
-        </Transition>
+        </Transition >
     );
 }

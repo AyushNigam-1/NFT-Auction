@@ -20,6 +20,7 @@ pub mod yieldhome {
         total_shares: u64,
         price_per_shares: u64,
         name: String,
+        address: String,
         thumbnail_uri: String,
         yield_percentage: u16,
         metadata_uri: String,
@@ -29,6 +30,7 @@ pub mod yieldhome {
         property.mint = ctx.accounts.mint.key();
         property.price_per_shares = price_per_shares;
         property.name = name;
+        property.address = address;
         property.thumbnail_uri = thumbnail_uri;
         property.yield_percentage = yield_percentage;
         property.metadata_uri = metadata_uri.clone();

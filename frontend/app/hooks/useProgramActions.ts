@@ -1,10 +1,10 @@
 import { PropertyData, PropertyFormData, PropertyItem, RawPropertyAccount } from "../types";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL, PublicKey, TransactionInstruction } from "@solana/web3.js";
-import { BN, web3 } from "@coral-xyz/anchor";
+import { BN, utils, web3 } from "@coral-xyz/anchor";
 import { useProgram } from "./useProgram";
 import { getMintProgramId } from "../utils";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, getMint } from "@solana/spl-token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getAssociatedTokenAddressSync, getMint } from "@solana/spl-token";
 
 export const useProgramActions = () => {
     const wallet = useWallet()
@@ -72,10 +72,25 @@ export const useProgramActions = () => {
         mintPubkey: PublicKey,
         name: string,
         thumbnailUri: string,
+        address: string,
         price_per_share: number,
         yieldPercentage: number,
         metadata_uri: string
     ) {
+        console.log("Creating property:", {
+            mintPubkey,
+            name,
+            totalShares,
+            thumbnailUri,
+
+            // decimals,
+            // rawAmount,
+            address,
+            price_per_share,
+            yieldPercentage,
+            metadata_uri
+
+        });
         if (!wallet.connected || !wallet.publicKey) {
             throw new Error("Wallet not connected");
         }
@@ -90,19 +105,14 @@ export const useProgramActions = () => {
         // ✅ Convert to raw amount
         const rawAmount = totalShares * Math.pow(10, decimals);
 
-        console.log("Creating property:", {
-            totalShares,
-            decimals,
-            rawAmount,
-            humanReadable: `${totalShares} shares`,
-            actualTransfer: `${rawAmount} raw units`
-        });
+
 
         const tx = await program!.methods
             .createProperty(
                 new BN(rawAmount), // ✅ Pass raw amount, not human-readable
                 new BN(price_per_share),
                 name,
+                address,
                 thumbnailUri,
                 yieldPercentage,
                 metadata_uri,
@@ -123,10 +133,40 @@ export const useProgramActions = () => {
         }
 
         try {
-            // 1. Get the correct Token Program (Legacy or Token-2022)
             const tokenProgramId = await getMintProgramId(mintPubkey);
 
-            console.log("Deleting property and closing vault...");
+            // 1. Derive the Property PDA
+            // We need this address to calculate the vault's address
+            const [propertyPda] = PublicKey.findProgramAddressSync(
+                [Buffer.from("property"), wallet.publicKey.toBuffer()],
+                program!.programId
+            );
+
+            // 2. Derive the Vault Token Account Address
+            // This is the ATA owned by the Property PDA
+            const vaultTokenAccount = await getAssociatedTokenAddress(
+                mintPubkey,
+                propertyPda,
+                true, // allowOwnerOffCurve = true (because owner is a PDA)
+                tokenProgramId,
+                ASSOCIATED_TOKEN_PROGRAM_ID
+            );
+
+            // 3. Derive the Owner's Token Account Address
+            // This is where the remaining tokens will be refunded to
+            const ownerTokenAccount = await getAssociatedTokenAddress(
+                mintPubkey,
+                wallet.publicKey,
+                false,
+                tokenProgramId,
+                ASSOCIATED_TOKEN_PROGRAM_ID
+            );
+
+            console.log("Deleting property...", {
+                property: propertyPda.toString(),
+                vault: vaultTokenAccount.toString(),
+                receiver: ownerTokenAccount.toString()
+            });
 
             const tx = await program!.methods
                 .deleteProperty()

@@ -12,7 +12,8 @@ pub struct Property {
     pub bump: u8,
     #[max_len(50)]
     pub name: String, // e.g., "Sunshine Apartments - Pune" (prefix 4 + 50)
-
+    #[max_len(100)]
+    pub address: String,
     #[max_len(150)]
     pub thumbnail_uri: String, // Small preview image URL
 

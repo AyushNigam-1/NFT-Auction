@@ -30,7 +30,10 @@ export interface PropertyFormData {
     description: string;
     address: string;
     total_value: number;
-    image: File | null | string;          // e.g., "1.2 crore"
+    type: string,
+    total_share: number,
+    rent: number,
+    images: File[];          // e.g., "1.2 crore"
     expected_yield: number;           // e.g., "6.5%"
     documents: File[];              // Array of document URLs
     attributes: PropertyAttribute[];   // Array of key-value attributes
