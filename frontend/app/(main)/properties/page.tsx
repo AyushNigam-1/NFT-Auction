@@ -7,9 +7,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useProgramActions } from "@/app/hooks/useProgramActions";
 import PropertyForm from "@/app/components/ui/PropertyForm";
 import { PropertyItem } from "@/app/types";
-import { Banknote, TrendingUp, Wallet } from "lucide-react";
+import { Banknote, TrendingUp } from "lucide-react";
 import PropertyDetails from "@/app/components/ui/PropertyDetails";
-
+import numeral from 'numeral';
 
 export default function page() {
 
@@ -33,7 +33,7 @@ export default function page() {
         staleTime: 1000 * 60, // 1 min cache (tweak if needed)
     });
 
-    console.log("subscribers", properties)
+    // console.log("subscribers", properties)
 
     return (
         <div className="space-y-4">
@@ -62,7 +62,7 @@ export default function page() {
                                         <span className="text-xs text-gray-300 uppercase tracking-wider"> Price / Share</span>
                                         <div className="flex items-center gap-2">
                                             <Banknote size={23} className="text-green-300" />
-                                            {/* <span className="text-xl font-bold text-white">{property.account.pricePerShares}</span> */}
+                                            <span className="text-xl font-bold text-white">${numeral(property.account.pricePerShares.toString()).format('0a').toUpperCase()}</span>
                                         </div>
                                     </div>
                                     <div className="flex flex-col gap-2 ">

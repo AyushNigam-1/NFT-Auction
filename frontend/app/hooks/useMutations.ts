@@ -3,7 +3,7 @@ import { useProgramActions } from "./useProgramActions";
 import { PropertyFormData } from "../types";
 import { uploadFileToPinata, uploadMetadataToPinata } from "../utils/pinata";
 import { PublicKey } from "@solana/web3.js";
-import { BN, IdlAccounts } from "@coral-xyz/anchor";
+import { BN } from "@coral-xyz/anchor";
 
 export const useMutations = () => {
     const programActions = useProgramActions()
@@ -24,10 +24,15 @@ export const useMutations = () => {
                     }
                     return null; // Handle cases where it might not be a file
                 });
-                console.log("Uploading documents...");
-                const documentUploadPromises = metadata.documents.map(async (doc) => {
+                console.log("Uploading legal_documents...");
+                const documentUploadPromises = metadata.legal_documents.map(async (doc) => {
                     if (doc instanceof File) {
-                        return await uploadFileToPinata(doc);
+                        const cid = await uploadFileToPinata(doc);
+                        return {
+                            cid,
+                            name: doc.name,
+                            type: doc.type
+                        };
                     }
                     return null; // Handle cases where it might not be a file
                 });

@@ -14,19 +14,16 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
     const [formData, setFormData] = useState<PropertyFormData>({
         name: "Sunshine Apartments - Pune",
         symbol: "SUNAPT",
-        description: "Modern 2BHK in Hinjewadi with gym and pool",
+        description: "Discover the charm of Sunset Haven Villa, a beautifully designed 4-bedroom, 3-bathroom home nestled in the serene Greenfield Heights community. Featuring an open-concept living space, a modern modular kitchen, and large panoramic windows that flood the rooms with natural light, this property offers the perfect blend of comfort and elegance. The landscaped backyard with a private patio is ideal for evening gatherings, while the spacious garage and smart home features add convenience to your lifestyle.",
         images: [],
-        address: "Hinjewadi Phase 1, Pune, Maharashtra",
-        total_value: 0,
-        expected_yield: 0,
+        address: "Willow Creek Lane, Greenfield Heights, Riverview City, 560045",
+        total_value: 100000,
+        expected_yield: 5,
         type: "",
-        total_share: 0,
-        rent: 0,
-        documents: [],
-        attributes: [
-            // { trait_type: "Bedrooms", value: "2" },
-            // { trait_type: "Area", value: "950 sqft" },
-        ],
+        total_share: 100,
+        rent: 10000,
+        legal_documents: [],
+        attributes: [],
     });
 
     // 1. FIXED: Cleaned up logic and removed strict 'instanceof' check
@@ -40,13 +37,13 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
         console.log(`Updating ${field}:`, value);
 
         setFormData((prev) => {
-            // Handle Documents Array
-            if (field === "documents" && index !== undefined) {
-                const newDocs = [...prev.documents];
+            // Handle legal_documents Array
+            if (field === "legal_documents" && index !== undefined) {
+                const newDocs = [...prev.legal_documents];
                 // Cast value to any or File to satisfy TS, 
                 // simply assign whatever comes from the input (File or null)
                 newDocs[index] = value as any;
-                return { ...prev, documents: newDocs };
+                return { ...prev, legal_documents: newDocs };
             }
             if (field === "images" && index !== undefined) {
                 const newDocs = [...prev.images];
@@ -260,17 +257,17 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                                         </div>
 
                                     </div>
-                                    {/* Documents */}
+                                    {/* legal_documents */}
                                     {/* <div className='h-0.5 w-full bg-white/10' /> */}
                                     <label className="block text-lg font-bold text-gray-700 dark:text-gray-100 mb-4">
-                                        Legal Documents
+                                        Legal legal_documents
                                     </label>
 
                                     {/* Document Grid Container */}
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 
-                                        {/* 1. Map through existing documents */}
-                                        {formData.documents.map((doc, index) => (
+                                        {/* 1. Map through existing legal_documents */}
+                                        {formData.legal_documents.map((doc, index) => (
                                             doc ? (
                                                 <div key={index} className="relative aspect-square rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center p-4 group">
 
@@ -295,9 +292,9 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                                                         <button
                                                             type="button"
                                                             onClick={() => {
-                                                                const newDocs = [...formData.documents];
+                                                                const newDocs = [...formData.legal_documents];
                                                                 newDocs.splice(index, 1);
-                                                                setFormData(prev => ({ ...prev, documents: newDocs }));
+                                                                setFormData(prev => ({ ...prev, legal_documents: newDocs }));
                                                             }}
                                                             className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition shadow-lg transform hover:scale-110"
                                                         >
@@ -322,7 +319,7 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                                                     if (file) {
                                                         setFormData(prev => ({
                                                             ...prev,
-                                                            documents: [...prev.documents, file]
+                                                            legal_documents: [...prev.legal_documents, file]
                                                         }));
                                                     }
                                                     e.target.value = '';

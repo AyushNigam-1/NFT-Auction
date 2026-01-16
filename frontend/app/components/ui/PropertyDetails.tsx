@@ -2,12 +2,13 @@ import { PropertyItem } from "@/app/types";
 import { fetchPropertyMetadata } from "@/app/utils/pinata";
 import { Dialog, DialogPanel, Transition, TransitionChild } from "@headlessui/react"
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, Coins, CoinsIcon, Currency, File, Home, PieChart, TableProperties, TrendingUp, TrendingUpIcon, User, WalletIcon, WalletMinimal } from "lucide-react";
+import { Banknote, Coins, CoinsIcon, Currency, Download, File, FileText, Home, PieChart, TableProperties, TrendingUp, TrendingUpIcon, User, WalletIcon, WalletMinimal } from "lucide-react";
 import React, { useState } from "react"
 import BuySharesCalculator from "./BuySharesCalculator";
 import { useMutations } from "@/app/hooks/useMutations";
 import Loader from "./Loader";
 import ImageCarousel from "./ImageCarousel";
+import numeral from "numeral";
 
 const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: (open: boolean) => void, property: PropertyItem }) => {
     const { deleteProperty, buyShares } = useMutations()
@@ -27,14 +28,14 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
         enabled: !!property
     });
 
-    console.log("metadata property", property)
+    console.log("metadata property", metadata)
     const details = [
-        { title: "User", value: `${property?.account.owner.toBase58().slice(0, 8)}...`, icon: (<User className="w-6 h-6 text-green-300" />) },
+        { title: "User", value: `${property?.account.owner.toBase58().slice(0, 4)}...`, icon: (<User className="w-6 h-6 text-green-300" />) },
         { title: "Yield", value: `${property?.account.yieldPercentage}%`, icon: (<TrendingUp className="w-6 h-6 text-green-300" />) },
         { title: "Token", value: metadata?.symbol, icon: (<Coins className="w-6 h-6 text-green-300" />) },
-        { title: "Shares", value: metadata?.total_share, icon: (<PieChart className="w-6 h-6 text-green-300" />) },
-        { title: "Worth", value: metadata?.total_value, icon: (<Banknote className="w-6 h-6 text-green-300" />) },
-        { title: "Rent", value: metadata?.rent, icon: (<WalletMinimal className="w-6 h-6 text-green-300" />) }
+        { title: "Shares", value: "100", icon: (<PieChart className="w-6 h-6 text-green-300" />) },
+        { title: "Worth", value: numeral(metadata?.total_value).format("0a").toUpperCase(), icon: (<Banknote className="w-6 h-6 text-green-300" />) },
+        { title: "Rent", value: numeral(metadata?.rent).format("0a").toUpperCase(), icon: (<WalletMinimal className="w-6 h-6 text-green-300" />) }
     ]
     // if (!property) return null
     return (
@@ -102,11 +103,30 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
                                     <File className="w-4 h-4 text-green-300" />
                                     <p className="text-gray-100 text-lg font-semibold" >Documents </p>
                                 </div>
-                                {/* <div className="flex gap-6">
-                                    {metadata?.documents.map((att, index) => {
-                                    
+                                <div className="flex gap-6">
+                                    {metadata?.legal_documents?.map((doc, index) => {
+                                        const isPdf = doc.type.includes("pdf");
+                                        return (
+                                            <div
+                                                onClick={() => window.open("doc.cid", "_blank")}
+                                                className="group flex items-center gap-3 bg-white/5  hover:bg-white/10 hover:border-green-500/30 transition-all rounded-lg p-4 cursor-pointer w-full md:w-auto"
+                                            >
+                                                {/* <div className={`p-2 rounded-md bg text-green-300 group-hover:scale-110 transition-transform`}> */}
+                                                <FileText className="w-6 text-green-300" />
+                                                {/* </div> */}
+                                                <div className="flex flex-col overflow-hidden">
+                                                    <span className=" font-semibold text-gray-200 truncate max-w-35">
+                                                        {doc.name}
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-200 font-mono uppercase tracking-wider">
+                                                        {doc.name.split('.').pop()?.toUpperCase() || "FILE"}
+                                                    </span>
+                                                </div>
+                                                {/* <Download className="w-4 h-4 text-green-300 ml-auto" /> */}
+                                            </div>
+                                        )
                                     })}
-                                </div> */}
+                                </div>
                                 <div className="flex gap-2 w-full items-center">
                                     <TableProperties className="w-4 h-4 text-green-300" />
                                     <p className="text-gray-100 text-lg font-semibold" >Traits </p>

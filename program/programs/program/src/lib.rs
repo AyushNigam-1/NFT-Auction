@@ -110,18 +110,18 @@ pub mod yieldhome {
     pub fn buy_shares(ctx: Context<BuyShares>, shares: u64, paid_sol: u64) -> Result<()> {
         // ✅ 1. Safe CPI: Transfer SOL from Buyer → Owner via System Program
         // This replaces the manual **lamports manipulation
-        let transfer_accounts = Transfer {
-            from: ctx.accounts.buyer.to_account_info(),
-            to: ctx.accounts.owner.to_account_info(),
-        };
+        // let transfer_accounts = Transfer {
+        //     from: ctx.accounts.buyer.to_account_info(),
+        //     to: ctx.accounts.owner.to_account_info(),
+        // };
 
-        let cpi_ctx = CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            transfer_accounts,
-        );
+        // let cpi_ctx = CpiContext::new(
+        //     ctx.accounts.system_program.to_account_info(),
+        //     transfer_accounts,
+        // );
 
-        // This checks if buyer has enough SOL and performs the transfer
-        system_program::transfer(cpi_ctx, paid_sol)?;
+        // // This checks if buyer has enough SOL and performs the transfer
+        // system_program::transfer(cpi_ctx, paid_sol)?;
 
         // 2. Transfer real shares from vault → buyer (Your existing code)
         let cpi_accounts_token = TransferChecked {

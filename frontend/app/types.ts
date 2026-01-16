@@ -35,7 +35,7 @@ export interface PropertyFormData {
     rent: number,
     images: File[];          // e.g., "1.2 crore"
     expected_yield: number;           // e.g., "6.5%"
-    documents: File[];              // Array of document URLs
+    legal_documents: File[];              // Array of document URLs
     attributes: PropertyAttribute[];   // Array of key-value attributes
 }
 
