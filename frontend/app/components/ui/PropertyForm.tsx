@@ -200,7 +200,7 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                                         Property Images
                                     </label>
                                     {/* Image Grid Container */}
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 ">
 
                                         {/* 1. Map through existing images (Previews) */}
                                         {formData.images.map((img, index) => (
@@ -259,8 +259,8 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                                     </div>
                                     {/* legal_documents */}
                                     {/* <div className='h-0.5 w-full bg-white/10' /> */}
-                                    <label className="block text-lg font-bold text-gray-700 dark:text-gray-100 mb-4">
-                                        Legal legal_documents
+                                    <label className="block text-lg font-bold text-gray-700 dark:text-gray-100 ">
+                                        Legal documents
                                     </label>
 
                                     {/* Document Grid Container */}
@@ -269,21 +269,21 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                                         {/* 1. Map through existing legal_documents */}
                                         {formData.legal_documents.map((doc, index) => (
                                             doc ? (
-                                                <div key={index} className="relative aspect-square rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center p-4 group">
+                                                <div key={index} className="relative aspect-square rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center p-4 group space-y-2 ">
 
                                                     {/* Visual Icon for Document */}
-                                                    <div className="bg-gray-800 p-3 rounded-lg mb-2">
-                                                        {/* You can replace this SVG with a specific FileText icon */}
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                        </svg>
-                                                    </div>
+                                                    {/* <div className="p"> */}
+                                                    {/* You can replace this SVG with a specific FileText icon */}
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                    {/* </div> */}
 
                                                     {/* Filename (Truncated) */}
                                                     <p className="text-xs text-gray-300 text-center w-full truncate px-2 font-medium">
                                                         {(doc as File).name}
                                                     </p>
-                                                    <p className="text-[10px] text-gray-500 mt-1 uppercase">
+                                                    <p className="text-[10px] text-gray-500  uppercase">
                                                         {(doc as File).name.split('.').pop()} File
                                                     </p>
 
@@ -306,7 +306,7 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                                         ))}
 
                                         {/* 2. The "Add Document" Placeholder Card */}
-                                        <div className="relative aspect-square rounded-xl border-2 border-dashed border-white/20 hover:border-blue-400 hover:bg-white/5 transition-all cursor-pointer flex flex-col items-center justify-center text-gray-400 hover:text-blue-400 group">
+                                        <div className="relative aspect-square rounded-xl border-2 border-dashed border-white/20 hover:border-blue-400 hover:bg-white/5 transition-all cursor-pointer flex flex-col items-center justify-center text-gray-400 hover:text-green-300 group">
 
                                             {/* Invisible File Input */}
                                             <input
@@ -342,7 +342,7 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                                     {formData.attributes.map((attr, index) => (
                                         <div key={index} className="grid md:grid-cols-2 gap-4 ">
                                             <InputGroup
-                                                label="Trait Type"
+                                                label="Type"
                                                 name={`trait-${index}`}
                                                 value={attr.trait_type}
                                                 onChange={(e) =>
@@ -368,7 +368,7 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
                                             ...prev,
                                             attributes: [...prev.attributes, { trait_type: "", value: "" }],
                                         }))}
-                                        className="text-green-400 hover:text-green-500 font-medium"
+                                        className="text-green-300 hover:text-green-400 font-medium"
                                     >
                                         + Add attribute
                                     </button>
@@ -377,7 +377,8 @@ export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, s
 
                                     <button
                                         onClick={() => createProperty.mutateAsync({ metadata: formData })}
-                                        className=" m-auto flex items-center justify-center gap-2 p-3 rounded-lg font-semibold text-lg transition-all bg-green-600 text-white cursor-pointer hover:bg-green-700"
+                                        disabled={createProperty.isPending}
+                                        className="m-auto flex items-center justify-center gap-2 p-3 rounded-lg font-semibold text-lg transition-all bg-green-800 text-white cursor-pointer hover:bg-green-700"
                                     >
                                         {createProperty.isPending ? <Loader /> : <Zap className="size-6" />}
                                         <span>Create</span>

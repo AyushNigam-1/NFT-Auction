@@ -24,7 +24,7 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
     } = useQuery({
         queryKey: ["property", property?.account?.metadataUri],
         queryFn: async () => await fetchPropertyMetadata(property.account.metadataUri),
-        staleTime: 1000 * 60, // 1 min cache (tweak if needed)
+        staleTime: 1000 * 40, // 1 min cache (tweak if needed)
         enabled: !!property
     });
 
@@ -165,9 +165,9 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
 
                                     Buy Now
                                 </button>
-                                <div onClick={() => deleteProperty.mutate(property.account.mint)} >
+                                <button onClick={() => deleteProperty.mutate(property.account.mint)} disabled={deleteProperty.isPending}  >
                                     Delete
-                                </div>
+                                </button>
                             </DialogPanel>
                         </TransitionChild>
                     </div>

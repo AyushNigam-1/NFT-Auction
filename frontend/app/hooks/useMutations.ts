@@ -86,10 +86,11 @@ export const useMutations = () => {
     });
 
     const deleteProperty = useMutation({
-        mutationKey: ["deleteProperty"],
-
+        // mutationKey: ["deleteProperty"],
+        retry: 0,
         // The actual function call
         mutationFn: async (mintPubkey: PublicKey) => {
+            console.log("🔥 MUTATION FIRED at:", new Date().toISOString()); // <--- Add this
             const tx = await programActions.deleteProperty(mintPubkey);
             return tx;
         },
@@ -115,7 +116,17 @@ export const useMutations = () => {
             // toast.error(message);
         },
     });
-
+    const cancelShares = useMutation({
+        mutationFn: programActions.forceCloseShareholder,
+        onSuccess: () => {
+            // toast.success("Shares cancelled successfully");
+            // queryClient.invalidateQueries({ queryKey: ["my-shares"] });
+        },
+        onError: (err) => {
+            console.error(err);
+            // toast.error("Failed to cancel shares");
+        }
+    });
     const buyShares = useMutation({
         mutationFn: async ({
             propertyPubkey,
@@ -158,5 +169,5 @@ export const useMutations = () => {
             // console.error("Buy shares error:", error);
         },
     });
-    return { createProperty, deleteProperty, buyShares }
+    return { createProperty, deleteProperty, buyShares, cancelShares }
 }

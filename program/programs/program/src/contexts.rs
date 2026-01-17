@@ -142,6 +142,20 @@ pub struct BuyShares<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
+
+#[derive(Accounts)]
+pub struct CloseShareholderAccount<'info> {
+    #[account(mut)]
+    pub buyer: Signer<'info>, // Recipient of rent
+
+    #[account(
+        mut,
+        constraint = share_holder.owner == buyer.key(), 
+        close = buyer
+    )]
+    pub share_holder: Account<'info, ShareHolder>,
+}
+
 #[derive(Accounts)]
 pub struct DistributeYield<'info> {
     #[account(mut)]

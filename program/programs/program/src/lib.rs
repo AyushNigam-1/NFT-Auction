@@ -1,14 +1,13 @@
-// src/lib.rs
 mod constants;
 mod contexts;
 mod events;
 mod states;
 use crate::{constants::*, contexts::*, events::*};
 use anchor_lang::prelude::*;
-use anchor_lang::system_program::{self, Transfer};
-use anchor_spl::token_interface::{close_account, transfer_checked, CloseAccount, TransferChecked}; // Import these
+// use anchor_lang::system_program::{self, Transfer};
+use anchor_spl::token_interface::{close_account, transfer_checked, CloseAccount, TransferChecked};
 
-declare_id!("Dh43TjNE2obrC8ZZXgvjitekaDiLmnnTCLTqLwziWnwU"); // Replace after deploy
+declare_id!("Dh43TjNE2obrC8ZZXgvjitekaDiLmnnTCLTqLwziWnwU");
 
 #[program]
 pub mod yieldhome {
@@ -153,6 +152,7 @@ pub mod yieldhome {
         let share_holder = &mut ctx.accounts.share_holder;
         share_holder.owner = ctx.accounts.buyer.key();
         share_holder.shares += shares;
+        share_holder.property = ctx.accounts.property.key();
 
         emit!(SharesBought {
             buyer: ctx.accounts.buyer.key(),
@@ -161,6 +161,13 @@ pub mod yieldhome {
             paid_sol,
         });
 
+        Ok(())
+    }
+
+    pub fn close_shareholder_account(_ctx: Context<CloseShareholderAccount>) -> Result<()> {
+        // No logic needed.
+        // The #[account(close = buyer)] constraint below handles everything automatically.
+        msg!("ShareHolder account closed. Rent refunded to buyer.");
         Ok(())
     }
 

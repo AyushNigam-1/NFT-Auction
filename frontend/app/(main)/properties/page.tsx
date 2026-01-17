@@ -10,6 +10,8 @@ import { PropertyItem } from "@/app/types";
 import { Banknote, TrendingUp } from "lucide-react";
 import PropertyDetails from "@/app/components/ui/PropertyDetails";
 import numeral from 'numeral';
+import Loader from "@/app/components/ui/Loader";
+import Error from "@/app/components/ui/Error";
 
 export default function page() {
 
@@ -18,6 +20,8 @@ export default function page() {
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState("");
     const [isOpen, setOpen] = useState(false)
+    const [isFormOpen, setFormOpen] = useState(false)
+
     const [searchQuery, setSearchQuery] = useState<string | null>("")
     const [property, setProperty] = useState<PropertyItem>()
 
@@ -28,7 +32,7 @@ export default function page() {
         isError: isQueryError,
         refetch,
     } = useQuery({
-        queryKey: [""],
+        queryKey: ["properties"],
         queryFn: async () => await getAllProperties(),
         staleTime: 1000 * 60, // 1 min cache (tweak if needed)
     });
@@ -37,49 +41,61 @@ export default function page() {
 
     return (
         <div className="space-y-4">
-            <button className="" onClick={() => setOpen(true)} >
+            {/* <button className="" onClick={() => setFormOpen(true)} >
                 Open
-            </button>
+            </button> */}
             <Header isFetching={isFetching} refetch={refetch} title="Properties" setSearchQuery={setSearchQuery} />
-            <div className="grid grid-cols-5">
-                {
-                    properties?.map((property) => {
-                        return (
-                            <div className="max-w-sm rounded-2xl space-y-3 overflow-hidden shadow-lg bg-white/5 p-3 hover:shadow-xl transition-shadow duration-300 cursor-pointer" onClick={() => { setProperty(property); setOpen(true) }}>
-                                <img
-                                    className="w-full  rounded-2xl"
-                                    src={`https://gold-endless-fly-679.mypinata.cloud/ipfs/${property.account.thumbnailUri}`}
-                                />
-                                <h3 className="text-xl font-bold truncate">
-                                    {property.account.name.split("-")[0]}
-                                </h3>
-                                <h3 className="text-sm font-semibold text-gray-100  ">
-                                    - {property.account.address}
-                                </h3>
-                                <div className='h-0.5 w-full bg-white/10' />
-                                <div className="flex items-center gap-3 justify-between">
-                                    <div className="flex flex-col gap-2 ">
-                                        <span className="text-xs text-gray-300 uppercase tracking-wider"> Price / Share</span>
-                                        <div className="flex items-center gap-2">
-                                            <Banknote size={23} className="text-green-300" />
-                                            <span className="text-xl font-bold text-white">${numeral(property.account.pricePerShares.toString()).format('0a').toUpperCase()}</span>
+            {isLoading || isFetching ? (
+                <Loader />
+            ) :
+                isQueryError ? <Error refetch={refetch} /> :
+                    properties?.length != 0 ?
+                        <div className="grid grid-cols-5">
+                            {
+                                properties?.map((property) => {
+                                    return (
+                                        <div className="max-w-sm rounded-2xl space-y-3 overflow-hidden shadow-lg bg-white/5 p-3 hover:shadow-xl transition-shadow duration-300 cursor-pointer" onClick={() => { setProperty(property); setFormOpen(true) }}>
+                                            <img
+                                                className="w-full  rounded-2xl"
+                                                src={`https://gold-endless-fly-679.mypinata.cloud/ipfs/${property?.account?.thumbnailUri}`}
+                                            />
+                                            <h3 className="text-xl font-bold truncate">
+                                                {property?.account?.name.split("-")[0]}
+                                            </h3>
+                                            <h3 className="text-sm font-semibold text-gray-100  ">
+                                                - {property?.account?.address}
+                                            </h3>
+                                            <div className='h-0.5 w-full bg-white/10' />
+                                            <div className="flex items-center gap-3 justify-between">
+                                                <div className="flex flex-col gap-2 ">
+                                                    <span className="text-xs text-gray-300 uppercase tracking-wider"> Price / Share</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <Banknote size={23} className="text-green-300" />
+                                                        <span className="text-xl font-bold text-white">${numeral(property?.account?.pricePerShares.toString()).format('0a').toUpperCase()}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col gap-2 ">
+                                                    <span className="text-xs text-gray-300 uppercase tracking-wider"> Annual Yield</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <TrendingUp size={23} className="text-green-300" />
+                                                        <span className="text-xl font-bold text-white"> {property?.account?.yieldPercentage}%</span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex flex-col gap-2 ">
-                                        <span className="text-xs text-gray-300 uppercase tracking-wider"> Annual Yield</span>
-                                        <div className="flex items-center gap-2">
-                                            <TrendingUp size={23} className="text-green-300" />
-                                            <span className="text-xl font-bold text-white"> {property.account.yieldPercentage}%</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )
-                    })
-                }
-            </div>
-
-            {/* <PropertyForm isOpen={isOpen} setIsOpen={setOpen} /> */}
+                                    )
+                                })
+                            }
+                        </div>
+                        :
+                        !searchQuery && <p className='text-center col-span-4 text-gray-400 text-2xl'>No properties found.</p>
+            }
+            {properties?.length === 0 && searchQuery && (
+                <div className="lg:col-span-4 p-8 rounded-xl text-center text-gray-400">
+                    <p className="text-2xl font-medium font-mono">No Plans found matching "{searchQuery}"</p>
+                </div>
+            )}
+            <PropertyForm isOpen={isFormOpen} setIsOpen={setFormOpen} />
             <PropertyDetails open={isOpen} property={property!} setOpen={setOpen} />
 
         </div>

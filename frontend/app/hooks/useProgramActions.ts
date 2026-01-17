@@ -5,10 +5,11 @@ import { BN, utils, web3 } from "@coral-xyz/anchor";
 import { useProgram } from "./useProgram";
 import { getMintProgramId } from "../utils";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress, getAssociatedTokenAddressSync, getMint } from "@solana/spl-token";
+import { Console } from "console";
 
 export const useProgramActions = () => {
     const wallet = useWallet()
-    const { program, PROGRAM_ID } = useProgram()
+    const { program, PROGRAM_ID, connection } = useProgram()
 
     // async function fetchNFTs() {
     //     try {
@@ -59,7 +60,7 @@ export const useProgramActions = () => {
     async function getAllProperties(): Promise<PropertyItem[]> {
         try {
             console.log("Fetching properties from Solana...");
-            const rawProperties = await program!.account.property.all()
+            const rawProperties = await (program!.account as any).property.all()
             console.log("rawProperties", rawProperties)
             return rawProperties
 
@@ -68,7 +69,42 @@ export const useProgramActions = () => {
             return [];
         }
     }
+    async function getAllShares() {
+        const shares = await (program!.account as any).shareHolder.all([
+            {
+                memcmp: {
+                    offset: 8, // Skip the 8-byte Anchor discriminator
+                    bytes: wallet.publicKey!.toBase58(),
+                },
+            },
+        ]);
 
+        const propertyKeys = shares.map(s => s.account.property);
+        // (Optional: use Set to ensure uniqueness if a user holds multiple types of shares)
+
+        const propertyAccounts = await connection.getMultipleAccountsInfo(propertyKeys);
+
+        // 4. Merge the data in your UI
+        const portfolio = shares.map((shareholder, index) => {
+            // Decode the property data (since getMultipleAccounts returns raw buffers)
+            const propertyData = program!.coder.accounts.decode(
+                "property",
+                propertyAccounts[index]!.data
+            );
+
+            return {
+                ...shareholder.account,
+                property: {
+                    name: propertyData.name, // <--- Got it without storing it!
+                    image: propertyData.thumbnailUri,
+                    address: propertyData.address
+                }
+            };
+        });
+
+        return portfolio
+        // console.log("Found accounts:", shareholders);
+    }
     async function createProperty(
         totalShares: number,
         mintPubkey: PublicKey,
@@ -134,58 +170,56 @@ export const useProgramActions = () => {
             throw new Error("Wallet not connected");
         }
 
-        try {
-            const tokenProgramId = await getMintProgramId(mintPubkey);
+        // ❌ REMOVE THE TRY/CATCH BLOCK here. 
+        // Let errors bubble up so useMutation can handle them.
 
-            // 1. Derive the Property PDA
-            // We need this address to calculate the vault's address
-            const [propertyPda] = PublicKey.findProgramAddressSync(
-                [Buffer.from("property"), wallet.publicKey.toBuffer()],
-                program!.programId
-            );
+        const tokenProgramId = await getMintProgramId(mintPubkey);
 
-            // 2. Derive the Vault Token Account Address
-            // This is the ATA owned by the Property PDA
-            const vaultTokenAccount = await getAssociatedTokenAddress(
-                mintPubkey,
-                propertyPda,
-                true, // allowOwnerOffCurve = true (because owner is a PDA)
-                tokenProgramId,
-                ASSOCIATED_TOKEN_PROGRAM_ID
-            );
+        const [propertyPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("property"), wallet.publicKey.toBuffer()],
+            program!.programId
+        );
+        // ... (Keep your existing vault/owner derivation logic) ...
+        const vaultTokenAccount = await getAssociatedTokenAddress(mintPubkey, propertyPda, true, tokenProgramId);
+        const ownerTokenAccount = await getAssociatedTokenAddress(mintPubkey, wallet.publicKey, false, tokenProgramId);
 
-            // 3. Derive the Owner's Token Account Address
-            // This is where the remaining tokens will be refunded to
-            const ownerTokenAccount = await getAssociatedTokenAddress(
-                mintPubkey,
-                wallet.publicKey,
-                false,
-                tokenProgramId,
-                ASSOCIATED_TOKEN_PROGRAM_ID
-            );
+        // -------------------------------------------------------
+        // 👇 CRITICAL FIX: Use .transaction() (Builder), NOT .rpc() (Sender)
+        // -------------------------------------------------------
+        const transaction = await program!.methods
+            .deleteProperty()
+            .accounts({
+                owner: wallet.publicKey,
+                mint: mintPubkey,
+                tokenProgram: tokenProgramId,
+            })
+            .transaction(); // <--- MUST BE .transaction()
 
-            console.log("Deleting property...", {
-                property: propertyPda.toString(),
-                vault: vaultTokenAccount.toString(),
-                receiver: ownerTokenAccount.toString()
-            });
+        // 2. Fetch fresh blockhash
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = wallet.publicKey;
 
-            const tx = await program!.methods
-                .deleteProperty()
-                .accounts({
-                    owner: wallet.publicKey,
-                    mint: mintPubkey,
-                    tokenProgram: tokenProgramId,
-                })
-                .rpc();
+        // 3. Send ONCE via Wallet Adapter
+        // Note: 'maxRetries: 0' prevents the library from spamming the network
+        const signature = await wallet.sendTransaction(transaction, connection, {
+            maxRetries: 0 // <--- IMPORTANT: Stop internal retries
+        });
 
-            console.log("✅ Property deleted successfully. Signature:", tx);
-            return tx;
+        // 4. Wait for confirmation
+        console.log("⏳ Confirming transaction...");
+        const confirmation = await connection.confirmTransaction({
+            blockhash,
+            lastValidBlockHeight,
+            signature
+        }, "confirmed");
 
-        } catch (error) {
-            console.error("❌ Error deleting property:", error);
-            throw error;
+        if (confirmation.value.err) {
+            throw new Error("Transaction failed on-chain");
         }
+
+        console.log("✅ Property deleted. Sig:", signature);
+        return signature; // <--- Now this will definitely be a string
     }
 
     async function buyShares(
@@ -274,14 +308,9 @@ export const useProgramActions = () => {
                 .accounts({
                     buyer: wallet.publicKey,
                     property: propertyPda,
-                    shareHolder: shareHolderPda,
                     owner: owner,
                     mint: mintPubkey,
-                    buyerTokenAccount: buyerTokenAccount,
-                    vaultTokenAccount: vaultTokenAccount,
                     tokenProgram: tokenProgramId,
-                    systemProgram: SystemProgram.programId,
-                    associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
                 })
                 .preInstructions(preInstructions)
                 .rpc();
@@ -298,5 +327,22 @@ export const useProgramActions = () => {
             throw error;
         }
     }
-    return { createProperty, deleteProperty, getAllProperties, buyShares }
+
+    async function forceCloseShareholder(shareHolderAddress: PublicKey) {
+        // const shareHolderPubkey = new PublicKey(shareHolderAddress);
+
+        console.log("🔥 Force Closing:", shareHolderAddress.toString());
+
+        const tx = await program!.methods
+            .closeShareholderAccount()
+            .accounts({
+                buyer: wallet.publicKey!,
+                shareHolder: shareHolderAddress, // <--- Just pass the key directly
+            })
+            .rpc();
+
+        console.log("✅ Closed!", tx);
+    }
+
+    return { createProperty, deleteProperty, getAllProperties, buyShares, getAllShares, forceCloseShareholder }
 }
