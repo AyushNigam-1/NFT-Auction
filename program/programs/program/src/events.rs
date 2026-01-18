@@ -16,9 +16,3 @@ pub struct SharesBought {
     pub shares: u64,
     pub paid_sol: u64,
 }
-
-#[event]
-pub struct YieldDistributed {
-    pub property: Pubkey,
-    pub total_sol: u64,
-}

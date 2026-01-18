@@ -141,6 +141,7 @@ export const useMutations = () => {
             mintAddress: PublicKey,
             owner: PublicKey,
         }) => {
+            console.log("shares", shares)
             const txSig = await programActions.buyShares(
                 propertyPubkey,
                 new BN(shares),

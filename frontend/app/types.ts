@@ -39,6 +39,18 @@ export interface PropertyFormData {
     attributes: PropertyAttribute[];   // Array of key-value attributes
 }
 
+export interface ShareDetails {
+    owner: string;
+    property: {
+        name: string;
+        image: string;
+        address: string;
+    };
+    shares: string; // Hex e.g., "3b9aca00"
+    lastClaim: string;
+    bump: number;
+}
+
 export interface RawPropertyAccount {
     owner: PublicKey;
     mint: PublicKey;

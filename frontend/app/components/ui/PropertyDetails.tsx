@@ -2,7 +2,7 @@ import { PropertyItem } from "@/app/types";
 import { fetchPropertyMetadata } from "@/app/utils/pinata";
 import { Dialog, DialogPanel, Transition, TransitionChild } from "@headlessui/react"
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, Coins, CoinsIcon, Currency, Download, File, FileText, Home, PieChart, TableProperties, TrendingUp, TrendingUpIcon, User, WalletIcon, WalletMinimal } from "lucide-react";
+import { Banknote, Coins, CoinsIcon, Currency, Download, File, FileText, Home, MapPin, PieChart, ShoppingCart, TableProperties, TrendingUp, TrendingUpIcon, User, WalletIcon, WalletMinimal } from "lucide-react";
 import React, { useState } from "react"
 import BuySharesCalculator from "./BuySharesCalculator";
 import { useMutations } from "@/app/hooks/useMutations";
@@ -14,7 +14,7 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
     const { deleteProperty, buyShares } = useMutations()
     const [percentage, setPercentage] = useState<number>(1);
     const [totalSol, setTotalSol] = useState<number>(0);
-
+    const [sharesAmount, setSharesAmount] = useState<number>(0)
     const {
         data: metadata,
         isLoading,
@@ -30,12 +30,12 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
 
     console.log("metadata property", metadata)
     const details = [
-        { title: "User", value: `${property?.account.owner.toBase58().slice(0, 4)}...`, icon: (<User className="w-6 h-6 text-green-300" />) },
-        { title: "Yield", value: `${property?.account.yieldPercentage}%`, icon: (<TrendingUp className="w-6 h-6 text-green-300" />) },
-        { title: "Token", value: metadata?.symbol, icon: (<Coins className="w-6 h-6 text-green-300" />) },
-        { title: "Shares", value: "100", icon: (<PieChart className="w-6 h-6 text-green-300" />) },
-        { title: "Worth", value: numeral(metadata?.total_value).format("0a").toUpperCase(), icon: (<Banknote className="w-6 h-6 text-green-300" />) },
-        { title: "Rent", value: numeral(metadata?.rent).format("0a").toUpperCase(), icon: (<WalletMinimal className="w-6 h-6 text-green-300" />) }
+        { title: "User", value: `${property?.account.owner.toBase58().slice(0, 4)}...`, icon: (<User className="w-6 h-6 text-emerald-400" />) },
+        { title: "Yield", value: `${property?.account.yieldPercentage}%`, icon: (<TrendingUp className="w-6 h-6 text-emerald-400" />) },
+        { title: "Token", value: metadata?.symbol, icon: (<Coins className="w-6 h-6 text-emerald-400" />) },
+        { title: "Shares", value: "100", icon: (<PieChart className="w-6 h-6 text-emerald-400" />) },
+        { title: "Worth", value: numeral(metadata?.total_value).format("0a").toUpperCase(), icon: (<Banknote className="w-6 h-6 text-emerald-400" />) },
+        { title: "Rent", value: numeral(metadata?.rent).format("0a").toUpperCase(), icon: (<WalletMinimal className="w-6 h-6 text-emerald-400" />) }
     ]
     // if (!property) return null
     return (
@@ -75,9 +75,11 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
                                 <h5 className="font-bold text-2xl">
                                     {property?.account.name}
                                 </h5>
-                                <p className="text-gray-200 font-semibold">
-                                    - {property?.account.address}
-                                </p>
+                                <div className="flex items-center gap-2 text-gray-300 ">
+                                    <MapPin className="w-4.5 text-emerald-400" />
+                                    <span className="text-gray-200 font-semibold">  {property?.account.address}
+                                    </span>
+                                </div>
                                 <p className="text-gray-300 ">
                                     {metadata?.description}
                                 </p>
@@ -86,9 +88,9 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
                                     {
                                         details.map((detail) => {
                                             return (
-                                                <div className="flex flex-col gap-2 ">
-                                                    <span className="text-xs text-gray-300 uppercase tracking-wider">{detail.title}</span>
-                                                    <div className="flex items-center gap-2">
+                                                <div className="flex flex-col gap-3 ">
+                                                    <span className="text-sm text-gray-300  tracking-wider">{detail.title}</span>
+                                                    <div className="flex items-center gap-3">
                                                         {detail.icon}
                                                         <span className="text-xl font-bold text-white">{detail.value}</span>
                                                     </div>
@@ -100,7 +102,7 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
                                 {/* </div> */}
                                 <div className='h-0.5 w-full bg-white/5' />
                                 <div className="flex gap-2 w-full items-center">
-                                    <File className="w-4 h-4 text-green-300" />
+                                    <File className="w-4 h-4 text-emerald-400" />
                                     <p className="text-gray-100 text-lg font-semibold" >Documents </p>
                                 </div>
                                 <div className="flex gap-6">
@@ -111,8 +113,8 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
                                                 onClick={() => window.open("doc.cid", "_blank")}
                                                 className="group flex items-center gap-3 bg-white/5  hover:bg-white/10 hover:border-green-500/30 transition-all rounded-lg p-4 cursor-pointer w-full md:w-auto"
                                             >
-                                                {/* <div className={`p-2 rounded-md bg text-green-300 group-hover:scale-110 transition-transform`}> */}
-                                                <FileText className="w-6 text-green-300" />
+                                                {/* <div className={`p-2 rounded-md bg text-emerald-400 group-hover:scale-110 transition-transform`}> */}
+                                                <FileText className="w-6 text-emerald-400" />
                                                 {/* </div> */}
                                                 <div className="flex flex-col overflow-hidden">
                                                     <span className=" font-semibold text-gray-200 truncate max-w-35">
@@ -122,13 +124,13 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
                                                         {doc.name.split('.').pop()?.toUpperCase() || "FILE"}
                                                     </span>
                                                 </div>
-                                                {/* <Download className="w-4 h-4 text-green-300 ml-auto" /> */}
+                                                {/* <Download className="w-4 h-4 text-emerald-400 ml-auto" /> */}
                                             </div>
                                         )
                                     })}
                                 </div>
                                 <div className="flex gap-2 w-full items-center">
-                                    <TableProperties className="w-4 h-4 text-green-300" />
+                                    <TableProperties className="w-4 h-4 text-emerald-400" />
                                     <p className="text-gray-100 text-lg font-semibold" >Traits </p>
                                 </div>
                                 {/* <div className="rounded-xl overflow-hidden border-2 border-white/5 divide-y-2 divide-white/5"> */}
@@ -145,7 +147,7 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
                                     })}
                                 </div>
                                 {/* <div className="flex gap-6 mt-4 mb-6">
-                                    <div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-lg">
+                                    <div className="flex items-center gap-2 bg-white/5 pinrx-4 py-2 rounded-lg">
                                         <span className="text-gray-400 text-sm">Bedrooms:</span>
                                         <span className="text-white font-bold">2</span>
                                     </div>
@@ -157,17 +159,18 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
                                 {/* </div> */}
                                 <div className='h-0.5 w-full bg-white/5' />
 
-                                <BuySharesCalculator percentage={percentage} setPercentage={setPercentage} totalValueInr={metadata?.total_value.toString()!} totalShares={100000} setTotalSol={setTotalSol} totalSol={totalSol} />
+                                <BuySharesCalculator setSharesAmount={setSharesAmount} percentage={percentage} setPercentage={setPercentage} totalValueInr={metadata?.total_value.toString()!} totalShares={metadata?.total_share!} setTotalSol={setTotalSol} totalSol={totalSol} />
+                                <div className='h-0.5 w-full bg-white/10' />
+
                                 <button onClick={() => {
                                     buyShares.mutate({ mintAddress: property.account.mint, owner: property.account.owner, propertyPubkey: property.publicKey, shares: percentage, paidSol: totalSol })
-                                }} className="w-full  py-4 bg-green-300/50 text-white font-bold text-lg rounded-xl shadow-lg">
-                                    {buyShares.isPending ? <Loader /> : ""}
-
+                                }} className="w-full flex items-center justify-center gap-2 p-3 rounded-lg font-semibold text-lg transition-all bg-emerald-500 text-gray-800 cursor-pointer hover:bg-emerald-600">
+                                    {buyShares.isPending ? <Loader /> : <ShoppingCart />}
                                     Buy Now
                                 </button>
-                                <button onClick={() => deleteProperty.mutate(property.account.mint)} disabled={deleteProperty.isPending}  >
+                                {/* <button onClick={() => deleteProperty.mutate(property.account.mint)} disabled={deleteProperty.isPending}  >
                                     Delete
-                                </button>
+                                </button> */}
                             </DialogPanel>
                         </TransitionChild>
                     </div>

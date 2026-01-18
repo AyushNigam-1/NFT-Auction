@@ -1,8 +1,9 @@
 mod constants;
 mod contexts;
+mod errors;
 mod events;
 mod states;
-use crate::{constants::*, contexts::*, events::*};
+use crate::{constants::*, contexts::*, errors::ErrorCode, events::*};
 use anchor_lang::prelude::*;
 // use anchor_lang::system_program::{self, Transfer};
 use anchor_spl::token_interface::{close_account, transfer_checked, CloseAccount, TransferChecked};
@@ -30,6 +31,7 @@ pub mod yieldhome {
         property.price_per_shares = price_per_shares;
         property.name = name;
         property.address = address;
+        // property.total_shares = total_shares;
         property.thumbnail_uri = thumbnail_uri;
         property.yield_percentage = yield_percentage;
         property.metadata_uri = metadata_uri.clone();
@@ -171,14 +173,62 @@ pub mod yieldhome {
         Ok(())
     }
 
-    pub fn distribute_yield(ctx: Context<DistributeYield>, total_sol: u64) -> Result<()> {
-        // Simplified: Owner sends SOL to vault, event logs distribution
-        // Advanced: Loop over holders or use proportional claim later
-        emit!(YieldDistributed {
-            property: ctx.accounts.property.key(),
-            total_sol,
-        });
+    pub fn deposit_rent(ctx: Context<DepositRent>, amount: u64) -> Result<()> {
+        // 1. Prepare the transfer from the owner to the Property PDA
+        let cpi_accounts = anchor_lang::system_program::Transfer {
+            from: ctx.accounts.owner.to_account_info(),
+            to: ctx.accounts.property.to_account_info(),
+        };
 
+        let cpi_ctx = CpiContext::new(ctx.accounts.system_program.to_account_info(), cpi_accounts);
+
+        // 2. Perform the transfer via the System Program
+        anchor_lang::system_program::transfer(cpi_ctx, amount)?;
+
+        msg!("Rent of {} lamports deposited into property vault", amount);
+
+        // You could also emit an event here if you have a RentDeposited event defined
         Ok(())
     }
+    // pub fn claim_yield(ctx: Context<ClaimYield>) -> Result<()> {
+    //     let property = &ctx.accounts.property;
+    //     let user_shares = ctx.accounts.user_token_account.amount; //
+    //     let total_shares = property.total_shares;
+
+    //     // 1. Get total SOL in the Property PDA
+    //     let total_vault_sol = ctx.accounts.property.to_account_info().lamports();
+
+    //     // 2. Proportional Math
+    //     let amount_to_claim = (user_shares as u128)
+    //         .checked_mul(total_vault_sol as u128)
+    //         .ok_or(error!(ErrorCode::MathOverflow))?
+    //         .checked_div(total_shares as u128)
+    //         .ok_or(error!(ErrorCode::MathOverflow))? as u64;
+
+    //     require!(amount_to_claim > 0, ErrorCode::NoYieldToClaim);
+
+    //     // 3. Prepare CPI to System Program
+    //     let cpi_accounts = anchor_lang::system_program::Transfer {
+    //         from: ctx.accounts.property.to_account_info(),
+    //         to: ctx.accounts.owner.to_account_info(), // Assuming 'user' is the claimer
+    //     };
+
+    //     // 4. Use the Seeds for the Signature
+    //     let owner_key = property.owner.key();
+    //     let seeds = &[PROPERTY_SEED, owner_key.as_ref(), &[property.bump]];
+    //     let signer_seeds = &[&seeds[..]];
+
+    //     let cpi_ctx = CpiContext::new_with_signer(
+    //         ctx.accounts.system_program.to_account_info(),
+    //         cpi_accounts,
+    //         signer_seeds, // <--- Seeds are used here!
+    //     );
+
+    //     // 5. Execute the transfer through the System Program
+    //     anchor_lang::system_program::transfer(cpi_ctx, amount_to_claim)?;
+
+    //     msg!("User claimed {} lamports in rent yield", amount_to_claim);
+
+    //     Ok(())
+    // }
 }

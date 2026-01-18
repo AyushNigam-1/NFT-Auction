@@ -2,7 +2,6 @@ use crate::{constants::*, states::*};
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    // 👇 FIX 1: Import TokenInterface, remove Token
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
@@ -157,19 +156,47 @@ pub struct CloseShareholderAccount<'info> {
 }
 
 #[derive(Accounts)]
-pub struct DistributeYield<'info> {
+pub struct DepositRent<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
 
     #[account(
         mut,
-        constraint = property.owner == owner.key(),
+        seeds = [PROPERTY_SEED, owner.key().as_ref()],
+        bump = property.bump,
+        has_one = owner, // Security check: Only the owner of this property can deposit rent
     )]
     pub property: Account<'info, Property>,
 
-    #[account(mut)]
-    /// CHECK: Vault receives/distributes SOL
-    pub vault: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
 
+#[derive(Accounts)]
+pub struct ClaimYield<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [PROPERTY_SEED, property.owner.as_ref()],
+        bump = property.bump,
+    )]
+    pub property: Account<'info, Property>,
+
+    #[account(
+        seeds = [SHAREHOLDER_SEED, owner.key().as_ref(), property.key().as_ref()],
+        bump,
+        has_one = owner,
+        has_one = property,
+    )]
+    pub share_holder: Account<'info, ShareHolder>,
+
+    #[account(
+        associated_token::mint = mint,
+        associated_token::authority = owner,
+    )]
+    pub user_token_account: InterfaceAccount<'info, TokenAccount>,
+
+    pub mint: InterfaceAccount<'info, Mint>,
     pub system_program: Program<'info, System>,
 }

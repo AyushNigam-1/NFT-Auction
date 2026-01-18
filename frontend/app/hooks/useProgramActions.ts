@@ -79,13 +79,13 @@ export const useProgramActions = () => {
             },
         ]);
 
-        const propertyKeys = shares.map(s => s.account.property);
+        const propertyKeys = shares.map((s: any) => s.account.property);
         // (Optional: use Set to ensure uniqueness if a user holds multiple types of shares)
 
         const propertyAccounts = await connection.getMultipleAccountsInfo(propertyKeys);
 
         // 4. Merge the data in your UI
-        const portfolio = shares.map((shareholder, index) => {
+        const portfolio = shares.map((shareholder: any, index: number) => {
             // Decode the property data (since getMultipleAccounts returns raw buffers)
             const propertyData = program!.coder.accounts.decode(
                 "property",
@@ -105,6 +105,106 @@ export const useProgramActions = () => {
         return portfolio
         // console.log("Found accounts:", shareholders);
     }
+
+    async function depositRent(
+        propertyOwner: PublicKey, // The wallet address that created the property
+        amountSol: number         // Amount in SOL (e.g., 1.5)
+    ): Promise<string> {
+        if (!wallet.publicKey || !program) throw new Error("Wallet not connected");
+
+        const connection = program.provider.connection;
+
+        // 1. Convert SOL to Lamports
+        const lamportsAmount = new BN(Math.floor(amountSol * LAMPORTS_PER_SOL));
+
+        // 2. Derive the Property PDA
+        // Note: Seeds must match your Rust: [PROPERTY_SEED, owner.key()]
+        const [propertyPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("property"), propertyOwner.toBuffer()],
+            program.programId
+        );
+
+        console.log("💰 Depositing Rent...", {
+            property: propertyPda.toBase58(),
+            amountLamports: lamportsAmount.toString(),
+            amountSol: amountSol
+        });
+
+        try {
+            // 3. Check if sender is the owner (Optional safety check)
+            if (!propertyOwner.equals(wallet.publicKey)) {
+                throw new Error("Only the property owner can deposit rent.");
+            }
+
+            // 4. Execute Transaction
+            const tx = await program.methods
+                .depositRent(lamportsAmount)
+                .accounts({
+                    owner: wallet.publicKey,
+                    property: propertyPda,
+                    systemProgram: SystemProgram.programId,
+                })
+                .rpc();
+
+            console.log("✅ Rent deposited successfully! Tx:", tx);
+
+            // 5. Update UI balance (Optional)
+            const newBalance = await connection.getBalance(propertyPda);
+            console.log(`🏦 New Property Vault Balance: ${newBalance / LAMPORTS_PER_SOL} SOL`);
+
+            return tx;
+        } catch (error: any) {
+            console.error("❌ Failed to deposit rent:", error.message);
+            throw error;
+        }
+    }
+    async function claimYield(
+        propertyPubkey: PublicKey, // The PDA of the property
+        mintPubkey: PublicKey      // The mint of the share tokens
+    ): Promise<string> {
+        if (!wallet.publicKey || !program) throw new Error("Wallet not connected");
+
+        const connection = program.provider.connection;
+
+        // 1. Get the Token Program ID for the mint
+        const tokenProgramId = await getMintProgramId(mintPubkey);
+
+        // 2. Derive the ShareHolder PDA
+
+
+        // 3. Derive the User's Token Account (ATA)
+        const userTokenAccount = getAssociatedTokenAddressSync(
+            mintPubkey,
+            wallet.publicKey,
+            false,
+            tokenProgramId
+        );
+
+
+
+        try {
+            // 4. Optional: Check if the user has shares before sending the transaction
+            const tokenBalance = await connection.getTokenAccountBalance(userTokenAccount);
+            if (parseInt(tokenBalance.value.amount) === 0) {
+                throw new Error("You do not own any shares in this property.");
+            }
+
+            // 5. Execute the claim instruction
+            const tx = await program.methods
+                .claimYield()
+                .accounts({
+                    mint: mintPubkey,
+                })
+                .rpc();
+
+            console.log("✅ Yield claimed successfully! Tx Signature:", tx);
+            return tx;
+        } catch (error: any) {
+            console.error("❌ Claim failed:", error.message);
+            throw error;
+        }
+    }
+
     async function createProperty(
         totalShares: number,
         mintPubkey: PublicKey,

@@ -3,18 +3,22 @@
 import Error from '@/app/components/ui/Error';
 import Header from '@/app/components/ui/Header';
 import Loader from '@/app/components/ui/Loader';
+import ShareDetailsModal from '@/app/components/ui/SharesDetails';
 import { useMutations } from '@/app/hooks/useMutations';
 import { useProgramActions } from '@/app/hooks/useProgramActions';
+import { ShareDetails } from '@/app/types';
 import { useQuery } from '@tanstack/react-query';
-import { Banknote } from 'lucide-react';
+import { Banknote, MapPin } from 'lucide-react';
 import numeral from 'numeral';
 import { useState } from 'react';
 
 const page = () => {
+
     const { getAllShares } = useProgramActions()
     const { cancelShares } = useMutations()
     const [searchQuery, setSearchQuery] = useState<string | null>("")
-
+    const [open, setOpen] = useState<boolean>(false)
+    const [data, setData] = useState<ShareDetails>()
     const {
         data: shares,
         isLoading,
@@ -41,7 +45,7 @@ const page = () => {
                             shares?.map((share: any) => {
                                 return (
                                     <div className="max-w-sm rounded-2xl space-y-3 overflow-hidden shadow-lg bg-white/5 p-3 hover:shadow-xl transition-shadow duration-300 cursor-pointer"
-                                    //  onClick={() => { setProperty(property); setOpen(true) }}
+                                        onClick={() => { setData(share); setOpen(true) }}
                                     >
                                         <img
                                             className="w-full  rounded-2xl"
@@ -50,9 +54,12 @@ const page = () => {
                                         <h3 className="text-xl font-bold truncate">
                                             {share.property?.name.split("-")[0]}
                                         </h3>
-                                        <h3 className="text-sm font-semibold text-gray-100  ">
-                                            - {share.property?.address}
-                                        </h3>
+                                        <div className="flex gap-2">
+                                            <MapPin className="w-8 text-green-400 " />
+                                            <h3 className="text-sm font-semibold text-gray-300 line-clamp-2">
+                                                {share.property?.address}
+                                            </h3>
+                                        </div>
                                         {/* <div className='h-0.5 w-full bg-white/10' /> */}
                                         {/* <div className="flex items-center gap-3 justify-between">
                                 <div className="flex flex-col gap-2 ">
@@ -91,6 +98,7 @@ const page = () => {
                     <p className="text-2xl font-medium font-mono">No Plans found matching "{searchQuery}"</p>
                 </div>
             )}
+            <ShareDetailsModal setOpen={setOpen} open={open} data={data!} />
         </div >
     )
 }
