@@ -45,7 +45,7 @@ const page = () => {
                             shares?.map((share: any) => {
                                 return (
                                     <div className="max-w-sm rounded-2xl space-y-3 overflow-hidden shadow-lg bg-white/5 p-3 hover:shadow-xl transition-shadow duration-300 cursor-pointer"
-                                        onClick={() => { setData(share); setOpen(true) }}
+                                    // onClick={() => { setData(share); setOpen(true) }}
                                     >
                                         <img
                                             className="w-full  rounded-2xl"
@@ -60,6 +60,13 @@ const page = () => {
                                                 {share.property?.address}
                                             </h3>
                                         </div>
+                                        <button
+                                            onClick={() => cancelShares.mutate(
+                                                share.publicKey)}
+                                            disabled={cancelShares.isPending}
+                                        >
+                                            {cancelShares.isPending ? "Cancelling..." : "Cancel Shares"}
+                                        </button>
                                         {/* <div className='h-0.5 w-full bg-white/10' /> */}
                                         {/* <div className="flex items-center gap-3 justify-between">
                                 <div className="flex flex-col gap-2 ">
@@ -80,13 +87,7 @@ const page = () => {
                                     </div>
                                 )
 
-                                // <button
-                                //     onClick={() => cancelShares.mutate(
-                                //         share.publicKey)}
-                                //     disabled={cancelShares.isPending}
-                                // >
-                                //     {cancelShares.isPending ? "Cancelling..." : "Cancel Shares"}
-                                // </button>
+
 
                             })}
                         </div>

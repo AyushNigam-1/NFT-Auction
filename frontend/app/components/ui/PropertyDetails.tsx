@@ -168,9 +168,9 @@ const PropertyDetails = ({ open, setOpen, property }: { open: boolean, setOpen: 
                                     {buyShares.isPending ? <Loader /> : <ShoppingCart />}
                                     Buy Now
                                 </button>
-                                {/* <button onClick={() => deleteProperty.mutate(property.account.mint)} disabled={deleteProperty.isPending}  >
+                                <button onClick={() => deleteProperty.mutate(property.account.mint)} disabled={deleteProperty.isPending}  >
                                     Delete
-                                </button> */}
+                                </button>
                             </DialogPanel>
                         </TransitionChild>
                     </div>

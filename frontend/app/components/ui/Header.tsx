@@ -1,5 +1,6 @@
 // import { HeaderProps } from '@/app/types/props'
 import { HeaderProps } from '@/app/types'
+import { RefreshCcw } from 'lucide-react'
 import React from 'react'
 
 const Header: React.FC<HeaderProps> = ({ title, refetch, setSearchQuery, isFetching, setOpen }) => {
@@ -20,7 +21,7 @@ const Header: React.FC<HeaderProps> = ({ title, refetch, setSearchQuery, isFetch
                         </div>
                     }
 
-                    {/* <button
+                    <button
                         onClick={() => refetch()}
                         disabled={isFetching}
                         className={`  p-2 flex items-center gap-2 rounded-full
@@ -30,8 +31,8 @@ const Header: React.FC<HeaderProps> = ({ title, refetch, setSearchQuery, isFetch
                             }`}
                     >
                         <RefreshCcw className={`size-6 ${isFetching ? 'animate-spin' : ''}`} />
-                       
-                    </button> */}
+
+                    </button>
 
                     {
                         setOpen ? <button

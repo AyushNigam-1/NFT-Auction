@@ -6,6 +6,7 @@ import { useProgram } from "./useProgram";
 import { getMintProgramId } from "../utils";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress, getAssociatedTokenAddressSync, getMint } from "@solana/spl-token";
 import { Console } from "console";
+import { publicKey } from "@metaplex-foundation/umi";
 
 export const useProgramActions = () => {
     const wallet = useWallet()
@@ -93,6 +94,7 @@ export const useProgramActions = () => {
             );
 
             return {
+                publicKey: shareholder.publicKey,
                 ...shareholder.account,
                 property: {
                     name: propertyData.name, // <--- Got it without storing it!
@@ -428,9 +430,12 @@ export const useProgramActions = () => {
         }
     }
 
+
+
+
+
     async function forceCloseShareholder(shareHolderAddress: PublicKey) {
         // const shareHolderPubkey = new PublicKey(shareHolderAddress);
-
         console.log("🔥 Force Closing:", shareHolderAddress.toString());
 
         const tx = await program!.methods
@@ -444,5 +449,5 @@ export const useProgramActions = () => {
         console.log("✅ Closed!", tx);
     }
 
-    return { createProperty, deleteProperty, getAllProperties, buyShares, getAllShares, forceCloseShareholder }
+    return { createProperty, deleteProperty, getAllProperties, buyShares, getAllShares, forceCloseShareholder, depositRent, claimYield }
 }

@@ -117,7 +117,7 @@ export const useMutations = () => {
         },
     });
     const cancelShares = useMutation({
-        mutationFn: programActions.forceCloseShareholder,
+        mutationFn: async (shareHolderPubkey: PublicKey) => await programActions.forceCloseShareholder(shareHolderPubkey),
         onSuccess: () => {
             // toast.success("Shares cancelled successfully");
             // queryClient.invalidateQueries({ queryKey: ["my-shares"] });

@@ -7,7 +7,7 @@ pub struct Property {
     pub owner: Pubkey,         // Property owner
     pub mint: Pubkey,          // SPL mint for shares
     pub price_per_shares: u64, // Total tokens minted (supply)
-    // pub total_shares: u64,
+    pub total_shares: u64,
     #[max_len(200)] // ← This fixes the error
     pub metadata_uri: String,
     pub bump: u8,
