@@ -17,7 +17,6 @@ pub struct Property {
     pub address: String,
     #[max_len(150)]
     pub thumbnail_uri: String, // Small preview image URL
-
     pub yield_percentage: u16, // 1-2 sentence teaser (max_len=200)
 }
 
@@ -26,7 +25,8 @@ pub struct Property {
 pub struct ShareHolder {
     pub owner: Pubkey,
     pub property: Pubkey,
-    pub shares: u64,     // Amount held
-    pub last_claim: i64, // Timestamp for yield calc (future extension)
+    pub shares_percentage: u64, // Amount held
+    pub monthly_rent: u64,
+    // pub last_claim: i64, // Timestamp for yield calc (future extension)
     pub bump: u8,
 }

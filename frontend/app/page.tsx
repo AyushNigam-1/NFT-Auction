@@ -1,116 +1,90 @@
-"use client"
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"; // still need this import for the button
+"use client";
+import { useWalletModal, WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-// import Cookies from "@/node_modules/@types/js-cookie"
 import { motion } from 'framer-motion';
-import axios from "axios";
-import { useMutation } from "@tanstack/react-query";
+import { ShieldCheck, Building2, TrendingUp, Lock, Wallet } from "lucide-react";
 
-function App() {
-  // const network = WalletAdapterNetwork.Devnet;
-
-  const { publicKey, connected } = useWallet();
-  const router = useRouter()
-  const API_BASE = "http://localhost:3000"
-
-  const { mutate: submit, isPending, isError, error } = useMutation({
-    mutationFn: async (address: string) => {
-      const { data } = await axios.get(`${API_BASE}/api/user/${address}`);
-      return data;
-    },
-    onSuccess: (data) => {
-      console.log("User fetched or created:", data);
-      // Cookies.set("user", data);
-      console.log(data)
-      router.push("/plans");
-    },
-    onError: (error) => {
-      console.error("Error fetching/creating user:", error);
-    },
-  });
+const LoginPage = () => {
+  const { publicKey, connected, disconnect } = useWallet();
+  const { setVisible } = useWalletModal();
+  const router = useRouter();
 
   useEffect(() => {
-    if (connected && publicKey) {
-      router.push("/properties")
-      // submit(publicKey.toBase58());
+    // if (connected && publicKey) {
+    //   router.push("/properties");
+    // }
+  }, [connected, publicKey, router]);
+
+  const handleAction = () => {
+    if (connected) {
+      disconnect();
+    } else {
+      setVisible(true); // Opens the official selection modal
     }
-  }, [connected, publicKey]);
-
+  };
   return (
-    <div className="relative w-full h-screen overflow-hidden flex items-center justify-center font-mono text-white">
-      {/* Floating animated background glow */}
+    <div className="relative w-full h-screen bg-[#171717] flex items-center justify-center font-mono">
+      <div className="absolute inset-0 z-0 opacity-20" />
       <motion.div
-        className="absolute inset-0 -z-10"
-        animate={{
-          background: [
-            'radial-gradient(circle at 20% 30%, rgba(99,102,241,0.2), transparent 70%)',
-            'radial-gradient(circle at 80% 70%, rgba(16,185,129,0.2), transparent 70%)',
-            'radial-gradient(circle at 50% 50%, rgba(79,70,229,0.2), transparent 70%)',
-          ],
-        }}
-        transition={{
-          repeat: Infinity,
-          duration: 7,
-          ease: 'easeInOut',
-        }}
-      />
-      {/* Content box */}
-      <motion.div
-        className="backdrop-blur-md  bg-white/10 rounded-2xl shadow-2xl p-10 flex flex-col items-center text-center max-w-lg w-full mx-4"
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.8, ease: 'easeOut' }}
+        className="relative z-10 w-full max-w-md p-8 space-y-8 rounded-[2.5rem] bg-[#121212] border border-white/5 shadow-2xl overflow-hidden"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
       >
-        <motion.h1
-          className="text-5xl font-extrabold mb-4 bg-clip-text text-gray-200 "
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.6 }}
-        >
-          Escrow Portal
-        </motion.h1>
+        <div className="flex justify-center">
+          <div className="p-4 bg-emerald-500/10 rounded-3xl border border-emerald-500/20">
+            <Building2 className="w-10 h-10 text-emerald-300" />
+          </div>
+        </div>
 
-        <motion.p
-          className="text-gray-400 mb-8"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.6 }}
-        >
-          Secure. Transparent. Decentralized.
-          Connect your Solana wallet to begin.
-        </motion.p>
+        <div className="text-center space-y-3">
+          <h1 className="text-3xl font-bold text-white tracking-tight">YieldHome </h1>
+          <p className="text-gray-500 text-sm leading-relaxed">
+            Secure on-chain real estate ownership. <br />
+            Connect to manage your shares and yield.
+          </p>
+        </div>
 
-        {/* Wallet Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.6 }}
-        >
-          <WalletMultiButton
-            className="bg-indigo-600! hover:bg-indigo-500! rounded-xl! px-8! py-3! text-lg! font-semibold! transition-all! duration-300!"
-          />
-        </motion.div>
+        <div className="grid grid-cols-1 gap-4">
+          {[
+            { icon: <ShieldCheck className="w-5" />, text: "Verified Asset Ownership" },
+            { icon: <TrendingUp className="w-5" />, text: "Real-time Yield Distribution" },
+            { icon: <Lock className="w-5" />, text: "Non-Custodial Security" }
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/2 border border-white/5 text-sm text-gray-400">
+              <span className="text-emerald-400">{item.icon}</span>
+              {item.text}
+            </div>
+          ))}
+        </div>
 
-        {/* Connection state */}
-        {connected && (
-          <motion.p
-            className="mt-6 text-sm text-gray-400"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-          >
-            Connected as{' '}
-            <span className="text-indigo-400 font-medium">
-              {publicKey?.toBase58().slice(0, 6)}...
-              {publicKey?.toBase58().slice(-4)}
-            </span>
-          </motion.p>
-        )}
+        <div className="flex flex-col items-center">
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="w-full">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleAction}
+              className="w-full h-14 bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold rounded-2xl 
+                 transition-all flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+            >
+              <Wallet className="w-5 h-5" />
+              {connected ? (
+                <span>{publicKey?.toBase58().slice(0, 4)}...{publicKey?.toBase58().slice(-4)}</span>
+              ) : (
+                "Connect Your Wallet"
+              )}
+            </motion.button>
+          </motion.div>
+
+          {/* <div className="mt-6 flex items-center gap-2 text-[10px] text-gray-600 uppercase tracking-widest font-bold">
+            <ShieldCheck className="w-3 h-3" />
+            Powered by Solana Network
+          </div> */}
+        </div>
       </motion.div>
     </div>
   );
-}
+};
 
-export default App;
+export default LoginPage;

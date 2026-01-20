@@ -8,7 +8,7 @@ const Error = ({ refetch }: { refetch: () => void }) => {
             <h6 className="text-gray-400" >This may be a temporary issue. Please try again</h6>
             <button
                 onClick={() => refetch()}
-                className=" px-5 py-2 bg-blue-400 text-white font-medium rounded-xl  transition-colors shadow-md flex gap-2 items-center hover:bg-blue-500"
+                className=" px-5 py-2 bg-emerald-400 text-gray-800 font-medium rounded-xl  transition-colors shadow-md flex gap-2 items-center hover:bg-emerald-500"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />

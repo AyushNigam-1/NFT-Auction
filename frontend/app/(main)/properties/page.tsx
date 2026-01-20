@@ -98,8 +98,9 @@ export default function page() {
                     <p className="text-2xl font-medium font-mono">No Plans found matching "{searchQuery}"</p>
                 </div>
             )}
-            {/* <PropertyForm isOpen={isFormOpen} setIsOpen={setFormOpen} /> */}
-            <PropertyDetails open={isOpen} property={property!} setOpen={setOpen} />
+
+            <PropertyForm isOpen={isFormOpen} setIsOpen={setFormOpen} />
+            <PropertyDetails open={isOpen} property={property!} setOpen={setOpen} isShareHolder={false} />
 
         </div>
     );

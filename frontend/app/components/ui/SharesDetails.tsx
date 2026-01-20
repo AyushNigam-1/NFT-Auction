@@ -1,7 +1,7 @@
 "use client";
 import React, { Fragment } from "react";
 import { Dialog, Transition, TransitionChild, DialogPanel } from "@headlessui/react";
-import { X, MapPin, Database, User, Clock, ShieldCheck, Copy, Home, Layers } from "lucide-react";
+import { X, MapPin, User, Clock, ShieldCheck, Copy, Layers } from "lucide-react";
 
 interface ShareDetails {
     owner: string;
@@ -53,7 +53,7 @@ const ShareDetailsModal: React.FC<ShareDetailsModalProps> = ({ open, setOpen, da
                             leaveFrom="opacity-100 scale-100 translate-y-0"
                             leaveTo="opacity-0 scale-95 translate-y-8"
                         >
-                            <DialogPanel className="w-full max-w-xl transform overflow-hidden rounded-[2rem] bg-[#1a1a1a] border border-white/5 text-left align-middle shadow-2xl transition-all">
+                            <DialogPanel className="w-full max-w-xl transform overflow-hidden rounded-4xl bg-[#1a1a1a] border border-white/5 text-left align-middle shadow-2xl transition-all">
 
                                 {/* 1. Hero Property Section (Matching your Detail Page) */}
                                 <div className="relative h-64 w-full overflow-hidden">
@@ -62,7 +62,7 @@ const ShareDetailsModal: React.FC<ShareDetailsModalProps> = ({ open, setOpen, da
                                         alt="Property Hero"
                                         className="w-full h-full object-cover brightness-75"
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-[#1a1a1a] via-transparent to-black/40" />
+                                    <div className="absolute inset-0 bg-linear-to-t from-[#1a1a1a] via-transparent to-black/40" />
 
                                     <button
                                         onClick={() => setOpen(false)}

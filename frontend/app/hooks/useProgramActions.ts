@@ -92,14 +92,12 @@ export const useProgramActions = () => {
                 "property",
                 propertyAccounts[index]!.data
             );
-
+            console.log("propertyData", propertyData)
             return {
-                publicKey: shareholder.publicKey,
-                ...shareholder.account,
+                shares: shareholder,
                 property: {
-                    name: propertyData.name, // <--- Got it without storing it!
-                    image: propertyData.thumbnailUri,
-                    address: propertyData.address
+                    publicKey: propertyKeys[index],
+                    account: propertyData
                 }
             };
         });
@@ -295,90 +293,48 @@ export const useProgramActions = () => {
                 mint: mintPubkey,
                 tokenProgram: tokenProgramId,
             })
-            .transaction(); // <--- MUST BE .transaction()
+            .rpc(); // <--- MUST BE .transaction()
 
         // 2. Fetch fresh blockhash
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-        transaction.recentBlockhash = blockhash;
-        transaction.feePayer = wallet.publicKey;
-
-        // 3. Send ONCE via Wallet Adapter
-        // Note: 'maxRetries: 0' prevents the library from spamming the network
-        const signature = await wallet.sendTransaction(transaction, connection, {
-            maxRetries: 0 // <--- IMPORTANT: Stop internal retries
-        });
-
-        // 4. Wait for confirmation
-        console.log("⏳ Confirming transaction...");
-        const confirmation = await connection.confirmTransaction({
-            blockhash,
-            lastValidBlockHeight,
-            signature
-        }, "confirmed");
-
-        if (confirmation.value.err) {
-            throw new Error("Transaction failed on-chain");
-        }
-
-        console.log("✅ Property deleted. Sig:", signature);
-        return signature; // <--- Now this will definitely be a string
+        return transaction; // <--- Now this will definitely be a string
     }
 
     async function buyShares(
-        propertyPubkey: PublicKey,
-        shares: number,
-        paidSol: number,
+        propertyPubkey: PublicKey, // PDA of the property
+        monthlyRent: number,       // The calculated rent for the user's portion
+        shares: number,            // The WHOLE number percentage (e.g., 5)
+        paidSol: number,           // SOL amount
         mintPubkey: PublicKey,
-        owner: PublicKey
+        owner: PublicKey           // Property creator's address
     ): Promise<string> {
         if (!wallet.publicKey || !program) throw new Error("Wallet not connected");
 
         const connection = program.provider.connection;
 
-        // 1. Get Mint Info & Decimals
+        // 1. Get Mint Info for the Vault Balance Check
         const tokenProgramId = await getMintProgramId(mintPubkey);
         const mintInfo = await getMint(connection, mintPubkey, undefined, tokenProgramId);
 
-        // 2. Derive Property PDA (Ensure seeds match your Rust code)
+        // 2. Derive PDAs (Ensure seeds match Rust)
         const [propertyPda] = PublicKey.findProgramAddressSync(
             [Buffer.from("property"), owner.toBuffer()],
             program.programId
         );
 
-        // 3. Derive Vault ATA
+        const [shareHolderPda] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("holder_v2"),
+                wallet.publicKey.toBuffer(),
+                propertyPda.toBuffer()
+            ],
+            program.programId
+        );
+
         const vaultTokenAccount = getAssociatedTokenAddressSync(
             mintPubkey,
             propertyPda,
-            true, // Allow owner off-curve (it's a PDA)
+            true,
             tokenProgramId
-        );
-
-        // --- NEW: FETCH CURRENT VAULT BALANCE ---
-        try {
-            const vaultBalanceResponse = await connection.getTokenAccountBalance(vaultTokenAccount);
-            console.log("📊 CURRENT VAULT STATE:");
-            console.log(`   - Raw Amount: ${vaultBalanceResponse.value.amount}`);
-            console.log(`   - UI Amount: ${vaultBalanceResponse.value.uiAmount} shares`);
-            console.log(`   - Decimals: ${vaultBalanceResponse.value.decimals}`);
-
-            // Safety check: Don't proceed if vault is empty
-            if (Number(vaultBalanceResponse.value.uiAmount) < shares) {
-                throw new Error(`Insufficient shares in vault. Available: ${vaultBalanceResponse.value.uiAmount}, Requested: ${shares}`);
-            }
-        } catch (e) {
-            console.error("❌ Failed to fetch vault balance. Does the vault exist?", e);
-            throw new Error("Vault account not found or uninitialized.");
-        }
-        // ----------------------------------------
-
-        // 4. Convert Input to Raw Amount (BN)
-        const rawShares = new BN(shares).mul(new BN(10).pow(new BN(mintInfo.decimals)));
-        const lamportsAmount = new BN(Math.floor(paidSol * LAMPORTS_PER_SOL));
-
-        // 5. Derive Other Accounts
-        const [shareHolderPda] = PublicKey.findProgramAddressSync(
-            [Buffer.from("holder_v2"), wallet.publicKey.toBuffer(), propertyPda.toBuffer()],
-            program.programId
         );
 
         const buyerTokenAccount = getAssociatedTokenAddressSync(
@@ -388,8 +344,22 @@ export const useProgramActions = () => {
             tokenProgramId
         );
 
+        // 3. Vault Balance Check (Using raw decimals for comparison)
         try {
-            // 6. Check if Buyer ATA exists, if not add to pre-instructions
+            const vaultBalanceResponse = await connection.getTokenAccountBalance(vaultTokenAccount);
+            const requestedRaw = new BN(shares).mul(new BN(10).pow(new BN(mintInfo.decimals)));
+
+            if (new BN(vaultBalanceResponse.value.amount).lt(requestedRaw)) {
+                throw new Error(`Vault only has ${vaultBalanceResponse.value.uiAmount} shares left.`);
+            }
+        } catch (e: any) {
+            throw new Error(e.message || "Vault account missing or empty.");
+        }
+
+        // 4. Convert SOL to Lamports
+        const lamportsAmount = new BN(Math.floor(paidSol * LAMPORTS_PER_SOL));
+
+        try {
             const buyerAtaInfo = await connection.getAccountInfo(buyerTokenAccount);
             const preInstructions = [];
             if (!buyerAtaInfo) {
@@ -404,9 +374,16 @@ export const useProgramActions = () => {
                 );
             }
 
-            // 7. Execute Transaction
+            // 5. Execute Transaction
+            // Argument 1: shares (whole number)
+            // Argument 2: lamports (SOL)
+            // Argument 3: monthlyRent (passed as BN)
             const tx = await program.methods
-                .buyShares(rawShares, lamportsAmount)
+                .buyShares(
+                    new BN(shares),
+                    lamportsAmount,
+                    new BN(monthlyRent)
+                )
                 .accounts({
                     buyer: wallet.publicKey,
                     property: propertyPda,
@@ -417,14 +394,8 @@ export const useProgramActions = () => {
                 .preInstructions(preInstructions)
                 .rpc();
 
-            // 8. Log Final Balance after short delay (for chain propagation)
-            setTimeout(async () => {
-                const finalBal = await connection.getTokenAccountBalance(vaultTokenAccount);
-                console.log(`✅ New Vault Balance: ${finalBal.value.uiAmount} shares`);
-            }, 2000);
-
             return tx;
-        } catch (error) {
+        } catch (error: any) {
             console.error("❌ Transaction failed:", error);
             throw error;
         }

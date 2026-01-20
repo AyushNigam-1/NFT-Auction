@@ -108,7 +108,12 @@ pub mod yieldhome {
         Ok(())
     }
 
-    pub fn buy_shares(ctx: Context<BuyShares>, shares: u64, paid_sol: u64) -> Result<()> {
+    pub fn buy_shares(
+        ctx: Context<BuyShares>,
+        shares: u64,
+        paid_sol: u64,
+        monthly_rent: u64,
+    ) -> Result<()> {
         // ✅ 1. Safe CPI: Transfer SOL from Buyer → Owner via System Program
         // This replaces the manual **lamports manipulation
         // let transfer_accounts = Transfer {
@@ -125,6 +130,12 @@ pub mod yieldhome {
         // system_program::transfer(cpi_ctx, paid_sol)?;
 
         // 2. Transfer real shares from vault → buyer (Your existing code)
+        let decimals = ctx.accounts.mint.decimals as u32;
+        let raw_token_amount = shares
+            .checked_mul(10u64.pow(decimals))
+            .ok_or(error!(ErrorCode::MathOverflow))?;
+
+        // 2. Transfer the raw tokens from vault → buyer
         let cpi_accounts_token = TransferChecked {
             from: ctx.accounts.vault_token_account.to_account_info(),
             to: ctx.accounts.buyer_token_account.to_account_info(),
@@ -133,12 +144,11 @@ pub mod yieldhome {
         };
 
         let owner_key = ctx.accounts.owner.key();
-        let seeds = &[
+        let signer_seeds: &[&[&[u8]]] = &[&[
             PROPERTY_SEED,
             owner_key.as_ref(),
             &[ctx.accounts.property.bump],
-        ];
-        let signer_seeds = &[&seeds[..]];
+        ]];
 
         transfer_checked(
             CpiContext::new_with_signer(
@@ -146,20 +156,23 @@ pub mod yieldhome {
                 cpi_accounts_token,
                 signer_seeds,
             ),
-            shares,
+            raw_token_amount, // Use the raw amount for the transfer
             ctx.accounts.mint.decimals,
         )?;
 
-        // 3. Update holder record (Your existing code)
+        // 3. Update holder record with direct percentage
         let share_holder = &mut ctx.accounts.share_holder;
         share_holder.owner = ctx.accounts.buyer.key();
-        share_holder.shares += shares;
         share_holder.property = ctx.accounts.property.key();
+        share_holder.monthly_rent = monthly_rent;
+
+        // Save as direct percentage (e.g., 5 is saved as 5)
+        share_holder.shares_percentage += shares;
 
         emit!(SharesBought {
             buyer: ctx.accounts.buyer.key(),
             property: ctx.accounts.property.key(),
-            shares,
+            shares, // Log the original whole number
             paid_sol,
         });
 
@@ -192,42 +205,35 @@ pub mod yieldhome {
     }
     pub fn claim_yield(ctx: Context<ClaimYield>) -> Result<()> {
         let property = &ctx.accounts.property;
-        let user_shares = ctx.accounts.user_token_account.amount; //
-        let total_shares = property.total_shares;
+        let share_holder = &ctx.accounts.share_holder;
 
-        // 1. Get total SOL in the Property PDA
+        // Get total SOL currently held in the Property treasury
         let total_vault_sol = ctx.accounts.property.to_account_info().lamports();
 
-        // 2. Proportional Math
-        let amount_to_claim = (user_shares as u128)
-            .checked_mul(total_vault_sol as u128)
+        // Simple Percentage Math: (Total SOL * Percentage) / 100
+        let amount_to_claim = (total_vault_sol as u128)
+            .checked_mul(share_holder.shares_percentage as u128)
             .ok_or(error!(ErrorCode::MathOverflow))?
-            .checked_div(total_shares as u128)
+            .checked_div(100) // Divide by 100 for percentage
             .ok_or(error!(ErrorCode::MathOverflow))? as u64;
 
         require!(amount_to_claim > 0, ErrorCode::NoYieldToClaim);
 
-        // 3. Prepare CPI to System Program
-        let cpi_accounts = anchor_lang::system_program::Transfer {
-            from: ctx.accounts.property.to_account_info(),
-            to: ctx.accounts.owner.to_account_info(), // Assuming 'user' is the claimer
-        };
-
-        // 4. Use the Seeds for the Signature
+        // Transfer SOL from PDA to User
         let owner_key = property.owner.key();
-        let seeds = &[PROPERTY_SEED, owner_key.as_ref(), &[property.bump]];
-        let signer_seeds = &[&seeds[..]];
+        let signer_seeds: &[&[&[u8]]] = &[&[PROPERTY_SEED, owner_key.as_ref(), &[property.bump]]];
 
-        let cpi_ctx = CpiContext::new_with_signer(
-            ctx.accounts.system_program.to_account_info(),
-            cpi_accounts,
-            signer_seeds, // <--- Seeds are used here!
-        );
-
-        // 5. Execute the transfer through the System Program
-        anchor_lang::system_program::transfer(cpi_ctx, amount_to_claim)?;
-
-        msg!("User claimed {} lamports in rent yield", amount_to_claim);
+        anchor_lang::system_program::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.system_program.to_account_info(),
+                anchor_lang::system_program::Transfer {
+                    from: ctx.accounts.property.to_account_info(),
+                    to: ctx.accounts.owner.to_account_info(),
+                },
+                signer_seeds,
+            ),
+            amount_to_claim,
+        )?;
 
         Ok(())
     }

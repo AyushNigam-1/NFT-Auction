@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, Building, ChartNoAxesGanttIcon, History, PieChart, Ticket } from 'lucide-react';
+import { Bell, Building, ChartNoAxesGanttIcon, History, Layers, PieChart, Ticket } from 'lucide-react';
 
 const Sidebar = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
@@ -23,7 +23,7 @@ const Sidebar = () => {
             text: "Properties", route: "/properties"
         },
         {
-            icon: (<PieChart />
+            icon: (<Layers />
             ), text: "Shares", route: "/shares"
         },
         // {

@@ -131,19 +131,23 @@ export const useMutations = () => {
         mutationFn: async ({
             propertyPubkey,
             shares,
+            monthlyRent,
             paidSol,
             mintAddress,
             owner,
         }: {
             propertyPubkey: PublicKey;
             shares: number | BN;
+            monthlyRent: number;
             paidSol: number | BN;
             mintAddress: PublicKey,
             owner: PublicKey,
         }) => {
             console.log("shares", shares)
+
             const txSig = await programActions.buyShares(
                 propertyPubkey,
+                new BN(monthlyRent),
                 new BN(shares),
                 new BN(paidSol),
                 mintAddress,
