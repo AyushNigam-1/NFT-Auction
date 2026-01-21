@@ -1,15 +1,14 @@
 "use client"
 
-import Error from '@/app/components/ui/Error';
-import Header from '@/app/components/ui/Header';
-import Loader from '@/app/components/ui/Loader';
-import PropertyDetails from '@/app/components/ui/PropertyDetails';
+import Error from '@/app/components/ui/layout/Error';
+import Header from '@/app/components/ui/layout/Header';
+import Loader from '@/app/components/ui/layout/Loader';
+import PropertyDetails from '@/app/components/ui/modals/PropertyDetails';
 import { useMutations } from '@/app/hooks/useMutations';
 import { useProgramActions } from '@/app/hooks/useProgramActions';
-import { PropertyItem, ShareDetails } from '@/app/types';
+import { ShareDetails } from '@/app/types';
 import { useQuery } from '@tanstack/react-query';
-import { Banknote, Layers, MapPin, TrendingUp } from 'lucide-react';
-import numeral from 'numeral';
+import { Banknote, Layers, MapPin } from 'lucide-react';
 import { useState } from 'react';
 
 const page = () => {
@@ -32,12 +31,11 @@ const page = () => {
         queryFn: async () => await getAllShares(),
         staleTime: 1000 * 60, // 1 min cache (tweak if needed)
     });
-
     console.log("shares", shares)
 
     return (
         <div className='space-y-4'>
-            <Header isFetching={isFetching} refetch={refetch} title="Shares" setSearchQuery={setSearchQuery} />
+            <Header isFetching={isFetching} refetch={refetch} title="Portfolio" setSearchQuery={setSearchQuery} />
 
             {isLoading || isFetching ? (
                 <Loader />
@@ -100,8 +98,6 @@ const page = () => {
                 </div>
             )}
             <PropertyDetails open={open} property={share?.property!} setOpen={setOpen} isShareHolder={true} shareHolder={share?.shares} />
-
-            {/* <ShareDetailsModal setOpen={setOpen} open={open} data={data!} /> */}
         </div >
     )
 }

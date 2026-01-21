@@ -2,16 +2,16 @@
 
 import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import Header from "@/app/components/ui/Header";
+import Header from "@/app/components/ui/layout/Header";
 import { useQuery } from "@tanstack/react-query";
 import { useProgramActions } from "@/app/hooks/useProgramActions";
-import PropertyForm from "@/app/components/ui/PropertyForm";
+import PropertyForm from "@/app/components/ui/modals/PropertyForm";
 import { PropertyItem } from "@/app/types";
 import { Banknote, MapPin, TrendingUp } from "lucide-react";
-import PropertyDetails from "@/app/components/ui/PropertyDetails";
+import PropertyDetails from "@/app/components/ui/modals/PropertyDetails";
 import numeral from 'numeral';
-import Loader from "@/app/components/ui/Loader";
-import Error from "@/app/components/ui/Error";
+import Loader from "@/app/components/ui/layout/Loader";
+import Error from "@/app/components/ui/layout/Error";
 
 export default function page() {
 
@@ -44,7 +44,7 @@ export default function page() {
             {/* <button className="" onClick={() => setFormOpen(true)} >
                 Open
             </button> */}
-            <Header isFetching={isFetching} refetch={refetch} title="Properties" setSearchQuery={setSearchQuery} />
+            <Header isFetching={isFetching} refetch={refetch} title="Marketplace" setSearchQuery={setSearchQuery} />
             {isLoading || isFetching ? (
                 <Loader />
             ) :

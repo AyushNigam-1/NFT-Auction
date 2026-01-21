@@ -2,20 +2,25 @@ import { PropertyItem } from "@/app/types";
 import { fetchPropertyMetadata } from "@/app/utils/pinata";
 import { Dialog, DialogPanel, Transition, TransitionChild } from "@headlessui/react"
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, Calendar, Coins, CoinsIcon, Currency, Download, File, FileText, Home, Layers, MapPin, PieChart, Pointer, ShoppingCart, TableProperties, TrendingUp, TrendingUpIcon, User, WalletIcon, WalletMinimal } from "lucide-react";
+import { Banknote, Coins, Currency, File, FileText, Home, Layers, MapPin, PieChart, Pointer, ShoppingCart, TableProperties, TrendingUp, User, WalletMinimal } from "lucide-react";
 import React, { useState } from "react"
-import BuySharesCalculator from "./BuySharesCalculator";
+import BuySharesCalculator from "../BuySharesCalculator";
 import { useMutations } from "@/app/hooks/useMutations";
-import Loader from "./Loader";
-import ImageCarousel from "./ImageCarousel";
+import Loader from "../layout/Loader";
+import ImageCarousel from "../ImageCarousel";
 import numeral from "numeral";
+import ShareHolderView from "../ShareHolderView";
+import DepositRentModal from "./DepositRent";
 
-const PropertyDetails = ({ open, setOpen, property, isShareHolder, shareHolder }: { open: boolean, setOpen: (open: boolean) => void, property: PropertyItem, isShareHolder: boolean, shareHolder?: any }) => {
+const PropertyDetails = ({ open, setOpen, property, isShareHolder, shareHolder, isOwner }: { open: boolean, setOpen: (open: boolean) => void, property: PropertyItem, isShareHolder: boolean, shareHolder?: any, isOwner?: boolean }) => {
+
     const { deleteProperty, buyShares } = useMutations()
     const [percentage, setPercentage] = useState<number>(1);
     const [totalSol, setTotalSol] = useState<number>(0);
     const [sharesAmount, setSharesAmount] = useState<number>(0)
     const [monthlyRent, setMonthlyRent] = useState<number>(0)
+    const [isDepositModalOpen, setDepositModalOpen] = useState(false);
+
     const {
         data: metadata,
         isLoading,
@@ -34,7 +39,7 @@ const PropertyDetails = ({ open, setOpen, property, isShareHolder, shareHolder }
         { title: "User", value: `${property?.account.owner.toBase58().slice(0, 4)}...`, icon: (<User className="w-6 h-6 text-emerald-400" />) },
         { title: "Yield", value: `${property?.account.yieldPercentage}%`, icon: (<TrendingUp className="w-6 h-6 text-emerald-400" />) },
         { title: "Token", value: metadata?.symbol, icon: (<Coins className="w-6 h-6 text-emerald-400" />) },
-        { title: "Shares", value: "100", icon: (<Layers className="w-6 h-6 text-emerald-400" />) },
+        { title: "Shares", value: `${numeral(metadata?.total_share).format("0a").toUpperCase()}`, icon: (<Layers className="w-6 h-6 text-emerald-400" />) },
         { title: "Worth", value: `$${numeral(metadata?.total_value).format("0a").toUpperCase()}`, icon: (<Banknote className="w-6 h-6 text-emerald-400" />) },
         { title: "Rent", value: `$${numeral(metadata?.rent).format("0a").toUpperCase()}/M`, icon: (<WalletMinimal className="w-6 h-6 text-emerald-400" />) }
     ]
@@ -74,7 +79,7 @@ const PropertyDetails = ({ open, setOpen, property, isShareHolder, shareHolder }
                             leaveFrom="opacity-100 scale-100 translate-y-0"
                             leaveTo="opacity-0 scale-90 translate-y-12"
                         >
-                            <DialogPanel className="w-full max-w-3xl transform overflow-hidden rounded-2xl bg-white/5 text-left align-middle shadow-2xl  transition-all font-inter text-white relative p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+                            <DialogPanel className="w-full max-w-3xl transform overflow-hidden rounded-xl bg-white/5 text-left align-middle shadow-2xl  transition-all font-inter text-white relative p-6 space-y-5 max-h-[90vh] overflow-y-auto">
                                 {/* <div className="p-3 rounded-xl  space-y-4  transition-all delay-50 cursor-pointer"  > */}
                                 {/* <img
                                     src={` ${property.account.thumbnailUri}`}
@@ -167,76 +172,42 @@ const PropertyDetails = ({ open, setOpen, property, isShareHolder, shareHolder }
                                 </div> */}
                                 {/* </div> */}
                                 {(isShareHolder && shareHolder) ?
-                                    <div className="space-y-5">
-                                        <div className="flex justify-between items-center">
-                                            <div className="flex gap-2 w-full items-center">
-                                                <Layers className="w-4 h-4 text-emerald-400" />
-                                                <p className="text-gray-100 text-lg font-semibold">Your Shares</p>
-                                            </div>
-                                            {/* <p className="text-sm text-gray-200 text-nowrap">Total:  Share</p> */}
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-y-6">
-                                            {
-                                                sharesDetails.map((detail) => {
-                                                    return (
-                                                        <div className="flex flex-col gap-3 ">
-                                                            <span className="text-xs text-gray-400 uppercase tracking-widest font-bold ">{detail.title}</span>
-                                                            <div className="flex items-center gap-3">
-                                                                {detail.icon}
-                                                                <span className="text-xl font-bold text-white">{detail.value}</span>
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })
-                                            }
-                                        </div>
-                                        <table className="w-full table-fixed text-sm text-left rtl:text-right text-body">
-                                            <thead className="text-sm text-body">
-                                                {/* 1. Added <tr> wrapper - This is the "Horizontal" container */}
-                                                <tr>
-                                                    {/* 2. Removed flex from <th> to allow table-fixed to work */}
-                                                    <th className="px-6 py-4.5 font-bold text-lg bg-white/5 rounded-tl-2xl">
-                                                        {/* 3. Wrap content in a flex div for alignment */}
-                                                        <div className="flex items-center gap-2">
-                                                            <Calendar className="w-5" />
-                                                            <span>Date</span>
-                                                        </div>
-                                                    </th>
-
-                                                    <th className="px-6 py-4.5 font-bold text-lg bg-white/5">
-                                                        <div className="flex items-center gap-2">
-                                                            <Banknote className="w-5" />
-                                                            <span>Rent</span>
-                                                        </div>
-                                                    </th>
-
-                                                    <th className="px-6 py-4.5 font-bold text-lg bg-white/5 rounded-tr-2xl">
-                                                        <div className="flex items-center gap-2">
-                                                            <Pointer className="w-5" />
-                                                            <span>Action</span>
-                                                        </div>
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                        </table>
-                                    </div>
-                                    :
-                                    <div className="space-y-5">
-                                        <BuySharesCalculator setSharesAmount={setSharesAmount} percentage={percentage} setPercentage={setPercentage} totalValueUsd={metadata?.total_value.toString()!} totalShares={metadata?.total_share!} setTotalSol={setTotalSol} totalRentUsd={metadata?.rent!} setMonthlyRent={setMonthlyRent} />
-                                        <div className='h-0.5 w-full bg-white/5' />
-
-                                        <button onClick={() => {
-                                            buyShares.mutate({ mintAddress: property.account.mint, monthlyRent, owner: property.account.owner, propertyPubkey: property.publicKey, shares: percentage, paidSol: totalSol })
-                                        }} className="w-full flex items-center justify-center gap-2 p-3 rounded-lg font-semibold text-lg transition-all bg-emerald-500 text-gray-800 cursor-pointer hover:bg-emerald-600">
-                                            {buyShares.isPending ? <Loader /> : <ShoppingCart />}
-                                            Buy Now
+                                    <ShareHolderView ShareDetails={sharesDetails} />
+                                    : isOwner ? <>
+                                        <button onClick={() => setDepositModalOpen(true)
+                                            // buyShares.mutate({ mintAddress: property.account.mint, monthlyRent, owner: property.account.owner, propertyPubkey: property.publicKey, shares: percentage, paidSol: totalSol })
+                                        } className="w-full flex items-center justify-center gap-2 p-3 rounded-xl font-semibold text-lg transition-all bg-emerald-500 text-gray-900 cursor-pointer hover:bg-emerald-600">
+                                            {buyShares.isPending ? <Loader /> : <Coins size={20} />}
+                                            Distribute Rent
                                         </button>
-                                    </div>}
+                                    </> :
+                                        <div className="space-y-5">
+                                            <BuySharesCalculator setSharesAmount={setSharesAmount} percentage={percentage} setPercentage={setPercentage} totalValueUsd={metadata?.total_value.toString()!} totalShares={metadata?.total_share!} setTotalSol={setTotalSol} totalRentUsd={metadata?.rent!} setMonthlyRent={setMonthlyRent} />
+                                            <div className='h-0.5 w-full bg-white/5' />
+
+                                            <button onClick={() => {
+                                                buyShares.mutate({ mintAddress: property.account.mint, monthlyRent, owner: property.account.owner, propertyPubkey: property.publicKey, shares: percentage, paidSol: totalSol })
+                                            }} className="w-full flex items-center justify-center gap-2 p-3 rounded-xl font-semibold text-lg transition-all bg-emerald-500 text-gray-900 cursor-pointer hover:bg-emerald-600">
+                                                {buyShares.isPending ? <Loader /> : <ShoppingCart />}
+                                                Buy Now
+                                            </button>
+                                        </div>}
                                 {/* <button onClick={() => deleteProperty.mutate(property.account.mint)} disabled={deleteProperty.isPending}  >
                                     Delete
                                 </button> */}
                             </DialogPanel>
                         </TransitionChild>
+                        <DepositRentModal
+                            open={isDepositModalOpen}
+                            setOpen={setDepositModalOpen}
+                            fixedRent={shareHolder?.account.monthlyRent.toString()} // Pass the fixed amount from property data
+                            totalShares={metadata?.total_share!} // Pass the sold shares count
+                            onConfirm={(amount) => {
+                                console.log("Distributing:", amount);
+                                // Call your Solana program instructions here
+                                setDepositModalOpen(false);
+                            }}
+                        />
                     </div>
                 </div>
             </Dialog>

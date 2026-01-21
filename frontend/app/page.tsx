@@ -12,9 +12,9 @@ const LoginPage = () => {
   const router = useRouter();
 
   useEffect(() => {
-    // if (connected && publicKey) {
-    //   router.push("/properties");
-    // }
+    if (connected && publicKey) {
+      router.push("/marketplace");
+    }
   }, [connected, publicKey, router]);
 
   const handleAction = () => {

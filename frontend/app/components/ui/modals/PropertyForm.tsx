@@ -1,11 +1,11 @@
 "use client"
 
 import React, { useState } from "react";
-import InputGroup from "./Input";
+import InputGroup from "../Input";
 import { Dialog, DialogPanel, DialogTitle, Transition } from "@headlessui/react";
 import { Delete, Recycle, Trash, X, Zap } from "lucide-react";
 import { useMutations } from "@/app/hooks/useMutations";
-import Loader from "./Loader";
+import Loader from "../layout/Loader";
 import { PropertyFormData } from "@/app/types";
 
 export default function PropertyForm({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: any }) {

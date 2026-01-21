@@ -4,7 +4,7 @@ import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, TransactionInstruction } fr
 import { BN, utils, web3 } from "@coral-xyz/anchor";
 import { useProgram } from "./useProgram";
 import { getMintProgramId } from "../utils";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress, getAssociatedTokenAddressSync, getMint } from "@solana/spl-token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress, getAssociatedTokenAddressSync, getMint, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { Console } from "console";
 import { publicKey } from "@metaplex-foundation/umi";
 
@@ -70,6 +70,99 @@ export const useProgramActions = () => {
             return [];
         }
     }
+
+    // Define the shape of your returned item
+    interface PropertyItem {
+        publicKey: PublicKey;
+        account: any;
+        stats: {
+            totalShares: number;
+            sharesSold: number;
+            sharesUnsold: number;
+            percentSold: number;
+        }
+    }
+
+    async function getMyListings(): Promise<PropertyItem[]> {
+        try {
+            console.log("Fetching properties from Solana...");
+
+            // 1. Fetch all property accounts for this creator
+            const rawProperties = await (program!.account as any).property.all([
+                {
+                    memcmp: {
+                        offset: 8, // Skip discriminator
+                        bytes: wallet.publicKey!.toBase58(), // Filter by Creator
+                    },
+                },
+            ]);
+            console.log("raw", rawProperties)
+            // 2. Process all properties in parallel to fetch Vault Balances
+            const propertiesWithStats = await Promise.all(
+                rawProperties.map(async (item: any) => {
+                    const propertyData = item.account;
+                    const propertyPda = item.publicKey;
+                    const mintPubkey = propertyData.mint; // Assuming 'mint' is in your struct
+                    const totalShares = propertyData.totalShares.toNumber(); // Assuming it's a BN
+
+                    // A. Derive the Vault Token Account (ATA)
+                    // Note: Ensure you use the correct Program ID (TOKEN_PROGRAM_ID or TOKEN_2022_PROGRAM_ID)
+                    // matching what you used to create the mint.
+                    const vaultTokenAccount = getAssociatedTokenAddressSync(
+                        mintPubkey,
+                        propertyPda,
+                        true, // allowOwnerOffCurve = true (Because owner is a PDA)
+                        TOKEN_2022_PROGRAM_ID // or TOKEN_PROGRAM_ID depending on your setup
+                    );
+
+                    let unsoldShares = 0;
+
+                    try {
+                        // B. Fetch the balance of the Vault (Unsold tokens)
+                        const balanceResponse = await connection.getTokenAccountBalance(vaultTokenAccount);
+
+                        // connection returns value as string, parse it
+                        // 'uiAmount' is user-friendly, 'amount' is raw integer string
+                        if (balanceResponse.value.amount) {
+                            unsoldShares = Number(balanceResponse.value.amount);
+                        }
+                    } catch (e) {
+                        // If account doesn't exist yet, it usually means 0 tokens or not initialized
+                        console.log(`Could not fetch balance for ${vaultTokenAccount.toBase58()}`, e);
+                        unsoldShares = 0;
+                        // OR: if the vault isn't created, maybe ALL shares are unsold? 
+                        // Adjust this logic based on your initialization flow.
+                    }
+
+                    // C. Calculate Metrics
+                    // If Vault holds unsold tokens: Sold = Total - Unsold
+                    const sharesSold = totalShares - unsoldShares;
+                    const percentSold = totalShares > 0
+                        ? ((sharesSold / totalShares) * 100).toFixed(1)
+                        : 0;
+
+                    return {
+                        publicKey: propertyPda,
+                        account: propertyData,
+                        stats: {
+                            totalShares,
+                            sharesSold,
+                            sharesUnsold: unsoldShares,
+                            percentSold: Number(percentSold)
+                        }
+                    };
+                })
+            );
+
+            console.log("Processed Properties:", propertiesWithStats);
+            return propertiesWithStats;
+
+        } catch (error) {
+            console.error("❌ Error in getMyListings:", error);
+            return [];
+        }
+    }
+
     async function getAllShares() {
         const shares = await (program!.account as any).shareHolder.all([
             {
@@ -107,7 +200,6 @@ export const useProgramActions = () => {
     }
 
     async function depositRent(
-        propertyOwner: PublicKey, // The wallet address that created the property
         amountSol: number         // Amount in SOL (e.g., 1.5)
     ): Promise<string> {
         if (!wallet.publicKey || !program) throw new Error("Wallet not connected");
@@ -120,7 +212,7 @@ export const useProgramActions = () => {
         // 2. Derive the Property PDA
         // Note: Seeds must match your Rust: [PROPERTY_SEED, owner.key()]
         const [propertyPda] = PublicKey.findProgramAddressSync(
-            [Buffer.from("property"), propertyOwner.toBuffer()],
+            [Buffer.from("property"), wallet.publicKey.toBuffer()],
             program.programId
         );
 
@@ -132,7 +224,7 @@ export const useProgramActions = () => {
 
         try {
             // 3. Check if sender is the owner (Optional safety check)
-            if (!propertyOwner.equals(wallet.publicKey)) {
+            if (!wallet.publicKey.equals(wallet.publicKey)) {
                 throw new Error("Only the property owner can deposit rent.");
             }
 
@@ -158,6 +250,7 @@ export const useProgramActions = () => {
             throw error;
         }
     }
+
     async function claimYield(
         propertyPubkey: PublicKey, // The PDA of the property
         mintPubkey: PublicKey      // The mint of the share tokens
@@ -220,9 +313,6 @@ export const useProgramActions = () => {
             name,
             totalShares,
             thumbnailUri,
-
-            // decimals,
-            // rawAmount,
             address,
             price_per_share,
             yieldPercentage,
@@ -242,8 +332,6 @@ export const useProgramActions = () => {
 
         // ✅ Convert to raw amount
         const rawAmount = totalShares * Math.pow(10, decimals);
-
-
 
         const tx = await program!.methods
             .createProperty(
@@ -374,10 +462,6 @@ export const useProgramActions = () => {
                 );
             }
 
-            // 5. Execute Transaction
-            // Argument 1: shares (whole number)
-            // Argument 2: lamports (SOL)
-            // Argument 3: monthlyRent (passed as BN)
             const tx = await program.methods
                 .buyShares(
                     new BN(shares),
@@ -402,9 +486,6 @@ export const useProgramActions = () => {
     }
 
 
-
-
-
     async function forceCloseShareholder(shareHolderAddress: PublicKey) {
         // const shareHolderPubkey = new PublicKey(shareHolderAddress);
         console.log("🔥 Force Closing:", shareHolderAddress.toString());
@@ -420,5 +501,5 @@ export const useProgramActions = () => {
         console.log("✅ Closed!", tx);
     }
 
-    return { createProperty, deleteProperty, getAllProperties, buyShares, getAllShares, forceCloseShareholder, depositRent, claimYield }
+    return { createProperty, deleteProperty, getAllProperties, buyShares, getAllShares, getMyListings, forceCloseShareholder, depositRent, claimYield }
 }

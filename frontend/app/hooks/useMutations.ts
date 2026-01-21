@@ -4,6 +4,7 @@ import { PropertyFormData } from "../types";
 import { uploadFileToPinata, uploadMetadataToPinata } from "../utils/pinata";
 import { PublicKey } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
+import { number } from "framer-motion";
 
 export const useMutations = () => {
     const programActions = useProgramActions()
@@ -116,6 +117,17 @@ export const useMutations = () => {
             // toast.error(message);
         },
     });
+    const depositRent = useMutation({
+        mutationFn: async (sol: number) => await programActions.depositRent(sol),
+        onSuccess: () => {
+            // toast.success("Shares cancelled successfully");
+            // queryClient.invalidateQueries({ queryKey: ["my-shares"] });
+        },
+        onError: (err) => {
+            console.error(err);
+            // toast.error("Failed to cancel shares");
+        }
+    });
     const cancelShares = useMutation({
         mutationFn: async (shareHolderPubkey: PublicKey) => await programActions.forceCloseShareholder(shareHolderPubkey),
         onSuccess: () => {
@@ -174,5 +186,5 @@ export const useMutations = () => {
             // console.error("Buy shares error:", error);
         },
     });
-    return { createProperty, deleteProperty, buyShares, cancelShares }
+    return { createProperty, deleteProperty, buyShares, cancelShares, depositRent }
 }
