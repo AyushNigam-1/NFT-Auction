@@ -41,9 +41,9 @@ export default function page() {
 
     return (
         <div className="space-y-4">
-            {/* <button className="" onClick={() => setFormOpen(true)} >
+            <button className="" onClick={() => setFormOpen(true)} >
                 Open
-            </button> */}
+            </button>
             <Header isFetching={isFetching} refetch={refetch} title="Marketplace" setSearchQuery={setSearchQuery} />
             {isLoading || isFetching ? (
                 <Loader />

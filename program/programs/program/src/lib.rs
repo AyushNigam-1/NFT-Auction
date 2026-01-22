@@ -187,54 +187,60 @@ pub mod yieldhome {
     }
 
     pub fn deposit_rent(ctx: Context<DepositRent>, amount: u64) -> Result<()> {
-        // 1. Prepare the transfer from the owner to the Property PDA
+        require!(amount > 0, ErrorCode::InvalidAmount);
+
         let cpi_accounts = anchor_lang::system_program::Transfer {
             from: ctx.accounts.owner.to_account_info(),
-            to: ctx.accounts.property.to_account_info(),
+            to: ctx.accounts.property_vault.to_account_info(),
         };
 
         let cpi_ctx = CpiContext::new(ctx.accounts.system_program.to_account_info(), cpi_accounts);
 
-        // 2. Perform the transfer via the System Program
         anchor_lang::system_program::transfer(cpi_ctx, amount)?;
 
         msg!("Rent of {} lamports deposited into property vault", amount);
-
-        // You could also emit an event here if you have a RentDeposited event defined
         Ok(())
     }
+
     pub fn claim_yield(ctx: Context<ClaimYield>) -> Result<()> {
-        let property = &ctx.accounts.property;
         let share_holder = &ctx.accounts.share_holder;
+        let user_token_acc = &ctx.accounts.user_token_account;
 
-        // Get total SOL currently held in the Property treasury
-        let total_vault_sol = ctx.accounts.property.to_account_info().lamports();
+        require!(user_token_acc.amount > 0, ErrorCode::NoSharesOwned);
 
-        // Simple Percentage Math: (Total SOL * Percentage) / 100
+        let total_vault_sol = ctx.accounts.property_vault.lamports();
+
         let amount_to_claim = (total_vault_sol as u128)
             .checked_mul(share_holder.shares_percentage as u128)
             .ok_or(error!(ErrorCode::MathOverflow))?
-            .checked_div(100) // Divide by 100 for percentage
+            .checked_div(100)
             .ok_or(error!(ErrorCode::MathOverflow))? as u64;
 
         require!(amount_to_claim > 0, ErrorCode::NoYieldToClaim);
+        let property_key = &ctx.accounts.property.key();
+        let (vault_pda, vault_bump) =
+            Pubkey::find_program_address(&[b"vault", property_key.as_ref()], ctx.program_id);
 
-        // Transfer SOL from PDA to User
-        let owner_key = property.owner.key();
-        let signer_seeds: &[&[&[u8]]] = &[&[PROPERTY_SEED, owner_key.as_ref(), &[property.bump]]];
+        require!(
+            vault_pda == ctx.accounts.property_vault.key(),
+            ErrorCode::InvalidVault
+        );
+
+        let vault_seeds: &[&[&[u8]]] = &[&[b"vault", property_key.as_ref(), &[vault_bump]]];
 
         anchor_lang::system_program::transfer(
             CpiContext::new_with_signer(
                 ctx.accounts.system_program.to_account_info(),
                 anchor_lang::system_program::Transfer {
-                    from: ctx.accounts.property.to_account_info(),
+                    from: ctx.accounts.property_vault.to_account_info(),
                     to: ctx.accounts.owner.to_account_info(),
                 },
-                signer_seeds,
+                vault_seeds,
             ),
             amount_to_claim,
         )?;
 
+        msg!("Claimed {} lamports from property vault", amount_to_claim);
         Ok(())
     }
 }

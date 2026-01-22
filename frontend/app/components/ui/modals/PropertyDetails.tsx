@@ -2,7 +2,7 @@ import { PropertyItem } from "@/app/types";
 import { fetchPropertyMetadata } from "@/app/utils/pinata";
 import { Dialog, DialogPanel, Transition, TransitionChild } from "@headlessui/react"
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, Coins, Currency, File, FileText, Home, Layers, MapPin, PieChart, Pointer, ShoppingCart, TableProperties, TrendingUp, User, WalletMinimal } from "lucide-react";
+import { Banknote, Coins, File, FileText, Layers, MapPin, ShoppingCart, TableProperties, TrendingUp, User, WalletMinimal } from "lucide-react";
 import React, { useState } from "react"
 import BuySharesCalculator from "../BuySharesCalculator";
 import { useMutations } from "@/app/hooks/useMutations";
@@ -10,11 +10,11 @@ import Loader from "../layout/Loader";
 import ImageCarousel from "../ImageCarousel";
 import numeral from "numeral";
 import ShareHolderView from "../ShareHolderView";
-import DepositRentModal from "./DepositRent";
+import DepositRent from "./DepositRent";
 
 const PropertyDetails = ({ open, setOpen, property, isShareHolder, shareHolder, isOwner }: { open: boolean, setOpen: (open: boolean) => void, property: PropertyItem, isShareHolder: boolean, shareHolder?: any, isOwner?: boolean }) => {
 
-    const { deleteProperty, buyShares } = useMutations()
+    const { buyShares, deleteProperty } = useMutations()
     const [percentage, setPercentage] = useState<number>(1);
     const [totalSol, setTotalSol] = useState<number>(0);
     const [sharesAmount, setSharesAmount] = useState<number>(0)
@@ -46,12 +46,14 @@ const PropertyDetails = ({ open, setOpen, property, isShareHolder, shareHolder, 
     const sharesDetails = [
         { title: "Shares", value: `${shareHolder?.account.sharesPercentage?.toString()}%`, icon: (<Layers className="w-6 h-6 text-emerald-400" />) },
         { title: " Rent", value: `$${shareHolder?.account.monthlyRent.toString()}/M`, icon: (<Banknote className="w-6 h-6 text-emerald-400" />) },
+
         // { title: "Token", value: metadata?.symbol, icon: (<Coins className="w-6 h-6 text-emerald-400" />) },
         // { title: "Shares", value: "100", icon: (<Layers className="w-6 h-6 text-emerald-400" />) },
         // { title: "Worth", value: `$${numeral(metadata?.total_value).format("0a").toUpperCase()}`, icon: (<Banknote className="w-6 h-6 text-emerald-400" />) },
         // { title: "Rent", value: `$${numeral(metadata?.rent).format("0a").toUpperCase()}`, icon: (<WalletMinimal className="w-6 h-6 text-emerald-400" />) }
     ]
     // if (!property) return null
+
     return (
 
         <Transition show={open} appear={true} as={React.Fragment}>
@@ -145,16 +147,18 @@ const PropertyDetails = ({ open, setOpen, property, isShareHolder, shareHolder, 
                                 </div>
                                 <div className="flex gap-2 w-full items-center">
                                     <TableProperties className="w-4 h-4 text-emerald-400" />
-                                    <p className="text-gray-100 text-lg font-semibold" >Traits </p>
+                                    <p className="text-gray-100 text-lg font-semibold" >Key Features </p>
                                 </div>
                                 {/* <div className="rounded-xl overflow-hidden border-2 border-white/5 divide-y-2 divide-white/5"> */}
                                 <div className="flex gap-6">
                                     {metadata?.attributes.map((att, index) => {
                                         return (
                                             <div key={index} className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-lg">
-                                                <span className="text-gray-400 text-sm">                                                    {att.trait_type}
+                                                <span className="text-gray-400 text-sm">
+                                                    {att.trait_type}
                                                     :</span>
-                                                <span className="text-white font-bold">                                                    {att.value}
+                                                <span className="text-white font-bold">
+                                                    {att.value}
                                                 </span>
                                             </div>
                                         );
@@ -172,19 +176,20 @@ const PropertyDetails = ({ open, setOpen, property, isShareHolder, shareHolder, 
                                 </div> */}
                                 {/* </div> */}
                                 {(isShareHolder && shareHolder) ?
-                                    <ShareHolderView ShareDetails={sharesDetails} />
-                                    : isOwner ? <>
-                                        <button onClick={() => setDepositModalOpen(true)
-                                            // buyShares.mutate({ mintAddress: property.account.mint, monthlyRent, owner: property.account.owner, propertyPubkey: property.publicKey, shares: percentage, paidSol: totalSol })
-                                        } className="w-full flex items-center justify-center gap-2 p-3 rounded-xl font-semibold text-lg transition-all bg-emerald-500 text-gray-900 cursor-pointer hover:bg-emerald-600">
-                                            {buyShares.isPending ? <Loader /> : <Coins size={20} />}
-                                            Distribute Rent
-                                        </button>
-                                    </> :
+                                    <ShareHolderView shareDetails={sharesDetails} propertyPda={property.publicKey} mintKey={property.account.mint} />
+                                    : isOwner ?
+                                        <>
+                                            <button onClick={() => setDepositModalOpen(true)
+                                                // buyShares.mutate({ mintAddress: property.account.mint, monthlyRent, owner: property.account.owner, propertyPubkey: property.publicKey, shares: percentage, paidSol: totalSol })
+                                            } className="w-full flex items-center justify-center gap-2 p-3 rounded-xl font-semibold text-lg transition-all bg-emerald-500 text-gray-900 cursor-pointer hover:bg-emerald-600">
+                                                {buyShares.isPending ? <Loader /> : <Coins size={20} />}
+                                                Distribute Rent
+                                            </button>
+                                        </>
+                                        :
                                         <div className="space-y-5">
                                             <BuySharesCalculator setSharesAmount={setSharesAmount} percentage={percentage} setPercentage={setPercentage} totalValueUsd={metadata?.total_value.toString()!} totalShares={metadata?.total_share!} setTotalSol={setTotalSol} totalRentUsd={metadata?.rent!} setMonthlyRent={setMonthlyRent} />
                                             <div className='h-0.5 w-full bg-white/5' />
-
                                             <button onClick={() => {
                                                 buyShares.mutate({ mintAddress: property.account.mint, monthlyRent, owner: property.account.owner, propertyPubkey: property.publicKey, shares: percentage, paidSol: totalSol })
                                             }} className="w-full flex items-center justify-center gap-2 p-3 rounded-xl font-semibold text-lg transition-all bg-emerald-500 text-gray-900 cursor-pointer hover:bg-emerald-600">
@@ -192,21 +197,16 @@ const PropertyDetails = ({ open, setOpen, property, isShareHolder, shareHolder, 
                                                 Buy Now
                                             </button>
                                         </div>}
-                                {/* <button onClick={() => deleteProperty.mutate(property.account.mint)} disabled={deleteProperty.isPending}  >
+                                <button onClick={() => deleteProperty.mutate(property.account.mint)} disabled={deleteProperty.isPending}  >
                                     Delete
-                                </button> */}
+                                </button>
                             </DialogPanel>
                         </TransitionChild>
-                        <DepositRentModal
+                        <DepositRent
                             open={isDepositModalOpen}
                             setOpen={setDepositModalOpen}
                             fixedRent={shareHolder?.account.monthlyRent.toString()} // Pass the fixed amount from property data
                             totalShares={metadata?.total_share!} // Pass the sold shares count
-                            onConfirm={(amount) => {
-                                console.log("Distributing:", amount);
-                                // Call your Solana program instructions here
-                                setDepositModalOpen(false);
-                            }}
                         />
                     </div>
                 </div>

@@ -16,21 +16,19 @@ interface DepositRentModalProps {
     setOpen: (open: boolean) => void;
     fixedRent: number;
     totalShares: number;
-    onConfirm: (amount: number, memo: string, period: string) => void;
 }
 
-export default function DepositRentModal({
+export default function DepositRent({
     open,
     setOpen,
     fixedRent,
     totalShares,
-    onConfirm
 }: DepositRentModalProps) {
     const { connection } = useConnection();
     const { publicKey } = useWallet();
     // 1. State for Amount, Memo, and Period
     const [walletBalance, setWalletBalance] = useState<number>(0)
-    const [amount, setAmount] = useState<number>(Number(fixedRent?.toString()));
+    const [amount, setAmount] = useState<number>(0);
     const [memo, setMemo] = useState<string>("");
 
     // Default to current month, e.g., "2026-02"

@@ -117,8 +117,22 @@ export const useMutations = () => {
             // toast.error(message);
         },
     });
+
     const depositRent = useMutation({
         mutationFn: async (sol: number) => await programActions.depositRent(sol),
+        onSuccess: () => {
+            // toast.success("Shares cancelled successfully");
+            // queryClient.invalidateQueries({ queryKey: ["my-shares"] });
+        },
+        onError: (err) => {
+            console.error(err);
+            // toast.error("Failed to cancel shares");
+        }
+    });
+
+    const claimYield = useMutation({
+        mutationFn: async ({ mint, property }: { mint: PublicKey, property: PublicKey }) => await programActions.claimYield(mint,       // The mint of the share tokens
+            property),
         onSuccess: () => {
             // toast.success("Shares cancelled successfully");
             // queryClient.invalidateQueries({ queryKey: ["my-shares"] });
@@ -186,5 +200,5 @@ export const useMutations = () => {
             // console.error("Buy shares error:", error);
         },
     });
-    return { createProperty, deleteProperty, buyShares, cancelShares, depositRent }
+    return { createProperty, deleteProperty, buyShares, cancelShares, depositRent, claimYield }
 }

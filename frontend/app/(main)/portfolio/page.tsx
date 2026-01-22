@@ -63,7 +63,7 @@ const page = () => {
                                         </div>
                                         {/* <button
                                             onClick={() => cancelShares.mutate(
-                                                share.publicKey)}
+                                                share.shares.publicKey)}
                                             disabled={cancelShares.isPending}
                                         >
                                             {cancelShares.isPending ? "Cancelling..." : "Cancel Shares"}

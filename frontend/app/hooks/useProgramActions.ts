@@ -234,7 +234,6 @@ export const useProgramActions = () => {
                 .accounts({
                     owner: wallet.publicKey,
                     property: propertyPda,
-                    systemProgram: SystemProgram.programId,
                 })
                 .rpc();
 
@@ -252,48 +251,52 @@ export const useProgramActions = () => {
     }
 
     async function claimYield(
-        propertyPubkey: PublicKey, // The PDA of the property
-        mintPubkey: PublicKey      // The mint of the share tokens
+        mintPubkey: PublicKey,       // The mint of the share tokens
+        propertyPda: PublicKey,      // <--- ADDED: The specific property we are claiming from
     ): Promise<string> {
+
         if (!wallet.publicKey || !program) throw new Error("Wallet not connected");
-
-        const connection = program.provider.connection;
-
-        // 1. Get the Token Program ID for the mint
-        const tokenProgramId = await getMintProgramId(mintPubkey);
+        // 1. Get Token Program ID (usually standard, but good to check)
+        // const tokenProgramId = await getMintProgramId(mintPubkey); // Assuming you have this helper
+        const tokenProgramId = await getMintProgramId(mintPubkey); // Or TOKEN_2022... depending on your setup
 
         // 2. Derive the ShareHolder PDA
+        // seeds = [SHAREHOLDER_SEED, owner.key(), property.key()]
+        const [shareHolderPda] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("holder_v2"), // Ensure this matches your Rust "SHAREHOLDER_SEED"
+                wallet.publicKey.toBuffer(),
+                propertyPda.toBuffer()
+            ],
+            program.programId
+        );
 
-
-        // 3. Derive the User's Token Account (ATA)
+        // 3. Derive User ATA
         const userTokenAccount = getAssociatedTokenAddressSync(
             mintPubkey,
             wallet.publicKey,
             false,
             tokenProgramId
         );
-
-
-
+        console.log(propertyPda.toBase58())
         try {
-            // 4. Optional: Check if the user has shares before sending the transaction
-            const tokenBalance = await connection.getTokenAccountBalance(userTokenAccount);
-            if (parseInt(tokenBalance.value.amount) === 0) {
-                throw new Error("You do not own any shares in this property.");
-            }
-
-            // 5. Execute the claim instruction
+            // 4. Execute Instruction with EXPLICIT Accounts
             const tx = await program.methods
                 .claimYield()
                 .accounts({
+                    property: propertyPda,        // <--- EXPLICITLY PASSED
+                    userTokenAccount: userTokenAccount,
                     mint: mintPubkey,
+                    systemProgram: web3.SystemProgram.programId,
+                    tokenProgram: tokenProgramId
                 })
                 .rpc();
 
-            console.log("✅ Yield claimed successfully! Tx Signature:", tx);
+            console.log("✅ Yield claimed successfully! Tx:", tx);
             return tx;
+
         } catch (error: any) {
-            console.error("❌ Claim failed:", error.message);
+            console.error("❌ Claim failed:", error);
             throw error;
         }
     }
@@ -488,7 +491,7 @@ export const useProgramActions = () => {
 
     async function forceCloseShareholder(shareHolderAddress: PublicKey) {
         // const shareHolderPubkey = new PublicKey(shareHolderAddress);
-        console.log("🔥 Force Closing:", shareHolderAddress.toString());
+        console.log("🔥 Force Closing:", shareHolderAddress);
 
         const tx = await program!.methods
             .closeShareholderAccount()

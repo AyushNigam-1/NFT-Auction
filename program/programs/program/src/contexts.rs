@@ -19,6 +19,13 @@ pub struct CreateProperty<'info> {
     )]
     pub property: Account<'info, Property>,
 
+    #[account(
+        mut,
+        seeds = [b"vault", property.key().as_ref()],
+        bump,
+    )]
+    pub property_vault: SystemAccount<'info>,
+    
     #[account(mut)]
     pub mint: InterfaceAccount<'info, Mint>,
 
@@ -61,6 +68,8 @@ pub struct DeleteProperty<'info> {
         close = owner, // Closes the Property PDA automatically
     )]
     pub property: Account<'info, Property>,
+
+
 
     // 👇 ADDED: Needed for transfer_checked
     #[account(
@@ -160,13 +169,14 @@ pub struct DepositRent<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
 
+    pub property: Account<'info, Property>,
+
     #[account(
         mut,
-        seeds = [PROPERTY_SEED, owner.key().as_ref()],
-        bump = property.bump,
-        has_one = owner, // Security check: Only the owner of this property can deposit rent
+        seeds = [b"vault", property.key().as_ref()],
+        bump
     )]
-    pub property: Account<'info, Property>,
+    pub property_vault: SystemAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -176,12 +186,14 @@ pub struct ClaimYield<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
 
+    pub property: Account<'info, Property>,
+
     #[account(
         mut,
-        seeds = [PROPERTY_SEED, property.owner.as_ref()],
-        bump = property.bump,
+        seeds = [b"vault", property.key().as_ref()],
+        bump
     )]
-    pub property: Account<'info, Property>,
+    pub property_vault: SystemAccount<'info>,
 
     #[account(
         seeds = [SHAREHOLDER_SEED, owner.key().as_ref(), property.key().as_ref()],
@@ -191,12 +203,16 @@ pub struct ClaimYield<'info> {
     )]
     pub share_holder: Account<'info, ShareHolder>,
 
+    pub mint: InterfaceAccount<'info, Mint>,
+
     #[account(
         associated_token::mint = mint,
         associated_token::authority = owner,
+        associated_token::token_program = token_program,
     )]
     pub user_token_account: InterfaceAccount<'info, TokenAccount>,
+    pub token_program: Interface<'info, TokenInterface>,
 
-    pub mint: InterfaceAccount<'info, Mint>,
     pub system_program: Program<'info, System>,
 }
+

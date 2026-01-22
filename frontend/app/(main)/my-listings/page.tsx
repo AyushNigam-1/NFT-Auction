@@ -7,7 +7,7 @@ import PropertyDetails from '@/app/components/ui/modals/PropertyDetails';
 import { useProgramActions } from '@/app/hooks/useProgramActions';
 import { PropertyItem } from '@/app/types';
 import { useQuery } from '@tanstack/react-query';
-import { DollarSign, MapPin, Users } from 'lucide-react';
+import { DollarSign, Layers, MapPin, Users } from 'lucide-react';
 import numeral from 'numeral';
 import { useState } from 'react'
 
@@ -77,7 +77,7 @@ const page = () => {
                                                 <div className="flex flex-col gap-2 ">
                                                     <span className="text-xs text-gray-300  tracking-wider"> Shares Sold</span>
                                                     <div className="flex items-center gap-2">
-                                                        <Users size={23} className="text-emerald-400" />
+                                                        <Layers size={23} className="text-emerald-400" />
                                                         <span className="text-xl font-bold text-white"> {numeral(normalizedSold).format('0,0')}%</span>
                                                     </div>
                                                 </div>

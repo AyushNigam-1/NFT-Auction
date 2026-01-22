@@ -24,6 +24,7 @@ const LoginPage = () => {
       setVisible(true); // Opens the official selection modal
     }
   };
+
   return (
     <div className="relative w-full h-screen bg-[#171717] flex items-center justify-center font-mono">
       <div className="absolute inset-0 z-0 opacity-20" />
