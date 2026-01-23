@@ -1,19 +1,23 @@
 "use client";
 import { useWalletModal, WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from 'framer-motion';
 import { ShieldCheck, Building2, TrendingUp, Lock, Wallet } from "lucide-react";
+import VerificationModal from "./components/ui/modals/Verification";
 
 const LoginPage = () => {
+  const [isOpen, setIsOpen] = useState(false);
+
   const { publicKey, connected, disconnect } = useWallet();
   const { setVisible } = useWalletModal();
   const router = useRouter();
 
   useEffect(() => {
     if (connected && publicKey) {
-      router.push("/marketplace");
+      setIsOpen(true)
+      // router.push("/marketplace");
     }
   }, [connected, publicKey, router]);
 
@@ -77,11 +81,7 @@ const LoginPage = () => {
               )}
             </motion.button>
           </motion.div>
-
-          {/* <div className="mt-6 flex items-center gap-2 text-[10px] text-gray-600 uppercase tracking-widest font-bold">
-            <ShieldCheck className="w-3 h-3" />
-            Powered by Solana Network
-          </div> */}
+          <VerificationModal isOpen={isOpen} setIsOpen={setIsOpen} />
         </div>
       </motion.div>
     </div>

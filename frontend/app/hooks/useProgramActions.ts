@@ -2,7 +2,7 @@ import { PropertyData, PropertyFormData, PropertyItem, RawPropertyAccount } from
 import { useWallet } from "@solana/wallet-adapter-react";
 import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
 import { BN, utils, web3 } from "@coral-xyz/anchor";
-import { useProgram } from "./useProgram";
+import { usePrograms } from "./useProgram";
 import { getMintProgramId } from "../utils";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress, getAssociatedTokenAddressSync, getMint, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { Console } from "console";
@@ -10,7 +10,7 @@ import { publicKey } from "@metaplex-foundation/umi";
 
 export const useProgramActions = () => {
     const wallet = useWallet()
-    const { program, PROGRAM_ID, connection } = useProgram()
+    const { yieldProgram, identityProgram, connection } = usePrograms()
 
     // async function fetchNFTs() {
     //     try {
@@ -61,7 +61,7 @@ export const useProgramActions = () => {
     async function getAllProperties(): Promise<PropertyItem[]> {
         try {
             console.log("Fetching properties from Solana...");
-            const rawProperties = await (program!.account as any).property.all()
+            const rawProperties = await (yieldProgram!.account as any).property.all()
             console.log("rawProperties", rawProperties)
             return rawProperties
 
@@ -88,7 +88,7 @@ export const useProgramActions = () => {
             console.log("Fetching properties from Solana...");
 
             // 1. Fetch all property accounts for this creator
-            const rawProperties = await (program!.account as any).property.all([
+            const rawProperties = await (yieldProgram!.account as any).property.all([
                 {
                     memcmp: {
                         offset: 8, // Skip discriminator
@@ -164,7 +164,7 @@ export const useProgramActions = () => {
     }
 
     async function getAllShares() {
-        const shares = await (program!.account as any).shareHolder.all([
+        const shares = await (yieldProgram!.account as any).shareHolder.all([
             {
                 memcmp: {
                     offset: 8, // Skip the 8-byte Anchor discriminator
@@ -181,7 +181,7 @@ export const useProgramActions = () => {
         // 4. Merge the data in your UI
         const portfolio = shares.map((shareholder: any, index: number) => {
             // Decode the property data (since getMultipleAccounts returns raw buffers)
-            const propertyData = program!.coder.accounts.decode(
+            const propertyData = yieldProgram!.coder.accounts.decode(
                 "property",
                 propertyAccounts[index]!.data
             );
@@ -202,9 +202,9 @@ export const useProgramActions = () => {
     async function depositRent(
         amountSol: number         // Amount in SOL (e.g., 1.5)
     ): Promise<string> {
-        if (!wallet.publicKey || !program) throw new Error("Wallet not connected");
+        if (!wallet.publicKey || !yieldProgram) throw new Error("Wallet not connected");
 
-        const connection = program.provider.connection;
+        const connection = yieldProgram.provider.connection;
 
         // 1. Convert SOL to Lamports
         const lamportsAmount = new BN(Math.floor(amountSol * LAMPORTS_PER_SOL));
@@ -213,7 +213,7 @@ export const useProgramActions = () => {
         // Note: Seeds must match your Rust: [PROPERTY_SEED, owner.key()]
         const [propertyPda] = PublicKey.findProgramAddressSync(
             [Buffer.from("property"), wallet.publicKey.toBuffer()],
-            program.programId
+            yieldProgram.programId
         );
 
         console.log("💰 Depositing Rent...", {
@@ -229,7 +229,7 @@ export const useProgramActions = () => {
             }
 
             // 4. Execute Transaction
-            const tx = await program.methods
+            const tx = await yieldProgram.methods
                 .depositRent(lamportsAmount)
                 .accounts({
                     owner: wallet.publicKey,
@@ -255,7 +255,7 @@ export const useProgramActions = () => {
         propertyPda: PublicKey,      // <--- ADDED: The specific property we are claiming from
     ): Promise<string> {
 
-        if (!wallet.publicKey || !program) throw new Error("Wallet not connected");
+        if (!wallet.publicKey || !yieldProgram) throw new Error("Wallet not connected");
         // 1. Get Token Program ID (usually standard, but good to check)
         // const tokenProgramId = await getMintProgramId(mintPubkey); // Assuming you have this helper
         const tokenProgramId = await getMintProgramId(mintPubkey); // Or TOKEN_2022... depending on your setup
@@ -268,7 +268,7 @@ export const useProgramActions = () => {
                 wallet.publicKey.toBuffer(),
                 propertyPda.toBuffer()
             ],
-            program.programId
+            yieldProgram.programId
         );
 
         // 3. Derive User ATA
@@ -281,7 +281,7 @@ export const useProgramActions = () => {
         console.log(propertyPda.toBase58())
         try {
             // 4. Execute Instruction with EXPLICIT Accounts
-            const tx = await program.methods
+            const tx = await yieldProgram.methods
                 .claimYield()
                 .accounts({
                     property: propertyPda,        // <--- EXPLICITLY PASSED
@@ -326,7 +326,7 @@ export const useProgramActions = () => {
             throw new Error("Wallet not connected");
         }
 
-        const connection = program!.provider.connection;
+        const connection = yieldProgram!.provider.connection;
         const tokenProgramId = await getMintProgramId(mintPubkey);
 
         // ✅ Get mint decimals
@@ -336,7 +336,7 @@ export const useProgramActions = () => {
         // ✅ Convert to raw amount
         const rawAmount = totalShares * Math.pow(10, decimals);
 
-        const tx = await program!.methods
+        const tx = await yieldProgram!.methods
             .createProperty(
                 new BN(rawAmount), // ✅ Pass raw amount, not human-readable
                 new BN(price_per_share),
@@ -368,7 +368,7 @@ export const useProgramActions = () => {
 
         const [propertyPda] = PublicKey.findProgramAddressSync(
             [Buffer.from("property"), wallet.publicKey.toBuffer()],
-            program!.programId
+            yieldProgram!.programId
         );
         // ... (Keep your existing vault/owner derivation logic) ...
         const vaultTokenAccount = await getAssociatedTokenAddress(mintPubkey, propertyPda, true, tokenProgramId);
@@ -377,7 +377,7 @@ export const useProgramActions = () => {
         // -------------------------------------------------------
         // 👇 CRITICAL FIX: Use .transaction() (Builder), NOT .rpc() (Sender)
         // -------------------------------------------------------
-        const transaction = await program!.methods
+        const transaction = await yieldProgram!.methods
             .deleteProperty()
             .accounts({
                 owner: wallet.publicKey,
@@ -398,9 +398,9 @@ export const useProgramActions = () => {
         mintPubkey: PublicKey,
         owner: PublicKey           // Property creator's address
     ): Promise<string> {
-        if (!wallet.publicKey || !program) throw new Error("Wallet not connected");
+        if (!wallet.publicKey || !yieldProgram) throw new Error("Wallet not connected");
 
-        const connection = program.provider.connection;
+        const connection = yieldProgram.provider.connection;
 
         // 1. Get Mint Info for the Vault Balance Check
         const tokenProgramId = await getMintProgramId(mintPubkey);
@@ -409,7 +409,7 @@ export const useProgramActions = () => {
         // 2. Derive PDAs (Ensure seeds match Rust)
         const [propertyPda] = PublicKey.findProgramAddressSync(
             [Buffer.from("property"), owner.toBuffer()],
-            program.programId
+            yieldProgram.programId
         );
 
         const [shareHolderPda] = PublicKey.findProgramAddressSync(
@@ -418,7 +418,7 @@ export const useProgramActions = () => {
                 wallet.publicKey.toBuffer(),
                 propertyPda.toBuffer()
             ],
-            program.programId
+            yieldProgram.programId
         );
 
         const vaultTokenAccount = getAssociatedTokenAddressSync(
@@ -465,7 +465,7 @@ export const useProgramActions = () => {
                 );
             }
 
-            const tx = await program.methods
+            const tx = await yieldProgram.methods
                 .buyShares(
                     new BN(shares),
                     lamportsAmount,
@@ -493,7 +493,7 @@ export const useProgramActions = () => {
         // const shareHolderPubkey = new PublicKey(shareHolderAddress);
         console.log("🔥 Force Closing:", shareHolderAddress);
 
-        const tx = await program!.methods
+        const tx = await yieldProgram!.methods
             .closeShareholderAccount()
             .accounts({
                 buyer: wallet.publicKey!,
@@ -504,5 +504,116 @@ export const useProgramActions = () => {
         console.log("✅ Closed!", tx);
     }
 
-    return { createProperty, deleteProperty, getAllProperties, buyShares, getAllShares, getMyListings, forceCloseShareholder, depositRent, claimYield }
+    const KYC_MINT_SEED = "kyc_mint";
+
+    // -------------------------------------------------------------------------
+    // Function 1: Initialize the Soulbound Mint (Admin Only)
+    // -------------------------------------------------------------------------
+    const createKycMint = async (
+        name: string,
+        symbol: string,
+        uri: string
+    ) => {
+        try {
+            // 1. Derive the Mint PDA
+            // seeds = [b"kyc_mint"]
+            const [mintPda] = PublicKey.findProgramAddressSync(
+                [Buffer.from(KYC_MINT_SEED)],
+                identityProgram!.programId
+            );
+
+            console.log("Derived Mint PDA:", mintPda.toBase58());
+
+            // 2. Execute Transaction
+            const tx = await identityProgram!.methods
+                .createKycMint(uri, name, symbol)
+                .accounts({
+                    payer: wallet.publicKey!,
+                    // mint: mintPda,
+                    // systemProgram: SystemProgram.programId,
+                    // tokenProgram: TOKEN_2022_PROGRAM_ID, // <--- CRITICAL: Must be Token-2022
+                })
+                .rpc();
+
+            console.log("✅ Mint Initialized! Tx:", tx);
+            return mintPda; // Return the PDA so you can save it to your database/constants
+
+        } catch (error) {
+            console.error("❌ Failed to create mint:", error);
+            throw error;
+        }
+    };
+
+    // -------------------------------------------------------------------------
+    // Function 2: Issue Badge to a User (Server-Side or Admin Wallet)
+    // -------------------------------------------------------------------------
+    const issueBadge = async (
+        adminPublicKey: PublicKey, // The wallet paying for the mint (Admin)
+        recipientPublicKey: PublicKey // The user receiving the badge
+    ) => {
+        try {
+            // 1. Derive the Mint PDA again
+            const [mintPda] = PublicKey.findProgramAddressSync(
+                [Buffer.from(KYC_MINT_SEED)],
+                identityProgram!.programId
+            );
+
+            // 2. Derive the Recipient's ATA (Associated Token Account)
+            // MUST use Token-2022 Program ID for derivation
+            const recipientTokenAccount = getAssociatedTokenAddressSync(
+                mintPda,
+                recipientPublicKey,
+                false, // allowOwnerOffCurve (usually false)
+                TOKEN_2022_PROGRAM_ID,
+                ASSOCIATED_TOKEN_PROGRAM_ID
+            );
+
+            console.log(" issuing badge to ATA:", recipientTokenAccount.toBase58());
+
+            // 3. Execute Transaction
+            const tx = await identityProgram!.methods
+                .issueBadge()
+                .accounts({
+                    authority: adminPublicKey, // Admin signs
+                    mint: mintPda,
+                    recipient: recipientPublicKey,
+                    recipientTokenAccount: recipientTokenAccount, // The ATA we derived
+                    systemProgram: SystemProgram.programId,
+                    tokenProgram: TOKEN_2022_PROGRAM_ID,
+                    associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+                })
+                .rpc();
+
+            console.log("✅ Badge Issued! Tx:", tx);
+            return tx;
+
+        } catch (error) {
+            console.error("❌ Failed to issue badge:", error);
+            throw error;
+        }
+    };
+
+    return { createProperty, deleteProperty, getAllProperties, buyShares, getAllShares, getMyListings, forceCloseShareholder, depositRent, claimYield, createKycMint, issueBadge }
 }
+
+
+// {
+//   "name": "Verified Resident: Tier 1",
+//   "symbol": "VERIFIED",
+//   "description": "Identity verification for Premium Real Estate Platform. Non-transferable.",
+//   "image": "https://arweave.net/YOUR_SHIELD_IMAGE_URL.png",
+//   "attributes": [
+//     {
+//       "trait_type": "Status",
+//       "value": "Verified"
+//     },
+//     {
+//       "trait_type": "KYC Provider",
+//       "value": "Sumsub"
+//     },
+//     {
+//       "trait_type": "Jurisdiction",
+//       "value": "Global"
+//     }
+//   ]
+// }

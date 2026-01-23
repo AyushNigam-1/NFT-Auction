@@ -7,6 +7,7 @@ skip-lint = false
 
 [programs.devnet]
 program = "Dh43TjNE2obrC8ZZXgvjitekaDiLmnnTCLTqLwziWnwU"
+identity_registry = "6u94bx6UkkxxDZucnGRzoNKP48Y8DYc3ibDCpnUHo5Yj"
 
 [registry]
 url = "https://api.apr.dev"

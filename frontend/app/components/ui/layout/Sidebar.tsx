@@ -133,11 +133,13 @@ const Sidebar = () => {
                     {navOptions.map((option, index) => (
                         <li key={index}>
                             {/* Optional: Add a label or divider before the Seller section */}
-                            {option.divider && (
-                                <div className="text-[10px] uppercase font-bold text-gray-500 mt-6 mb-2 px-2">
-                                    Management
-                                </div>
-                            )}
+                            {/* {option.divider && (
+                                <div className='h-0.5 w-full bg-white/5 space-y-2' /> */}
+
+                            {/* // <div className="text-[10px] uppercase font-bold text-gray-500 mt-6 mb-2 px-2">
+                                //     Management
+                                // </div> */}
+                            {/* )} */}
 
                             <button
                                 className={`

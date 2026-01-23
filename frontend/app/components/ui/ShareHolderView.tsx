@@ -5,25 +5,31 @@ import { Banknote, Calendar, Layers, Pointer, Download, Wallet } from 'lucide-re
 import { useEffect, useState } from 'react'
 import numeral from 'numeral'
 import { useMutations } from '@/app/hooks/useMutations'
+import { useProgram } from '@/app/hooks/useProgram'
 
 // Standard RPC connection (Devnet for now, change if on Mainnet)
 const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
 const ShareHolderView = ({ shareDetails, propertyPda, mintKey }: { shareDetails: any[], propertyPda: PublicKey, mintKey: PublicKey }) => {
     const { claimYield } = useMutations()
+    const { program, publicKey } = useProgram()
     const [claimableAmount, setClaimableAmount] = useState<number>(0);
     const [pdaBalance, setPdaBalance] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
 
     useEffect(() => {
         const fetchBalanceAndCalculate = async () => {
-            if (!propertyPda) return;
+            const [propertyVault] = PublicKey.findProgramAddressSync(
+                [Buffer.from("vault"), propertyPda!.toBuffer()],
+                program!.programId
+            );
+            if (!propertyVault) return;
 
             try {
                 setLoading(true);
 
                 // 1. Fetch Property PDA Balance (The Vault)
-                const balanceLamports = await connection.getBalance(propertyPda);
+                const balanceLamports = await connection.getBalance(propertyVault);
                 const balanceSol = balanceLamports / LAMPORTS_PER_SOL;
                 setPdaBalance(balanceSol);
 

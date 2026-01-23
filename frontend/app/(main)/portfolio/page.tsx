@@ -9,6 +9,7 @@ import { useProgramActions } from '@/app/hooks/useProgramActions';
 import { ShareDetails } from '@/app/types';
 import { useQuery } from '@tanstack/react-query';
 import { Banknote, Layers, MapPin } from 'lucide-react';
+import numeral from 'numeral';
 import { useState } from 'react';
 
 const page = () => {
@@ -43,9 +44,9 @@ const page = () => {
                 isQueryError ? <Error refetch={refetch} /> :
                     shares?.length != 0 ?
                         <div className="grid grid-cols-5"> {
-                            shares?.map((share: any) => {
+                            shares?.map((share: any, index: any) => {
                                 return (
-                                    <div className="max-w-sm rounded-2xl space-y-3 overflow-hidden shadow-lg bg-white/5 p-3 hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+                                    <div key={index} className="max-w-sm rounded-2xl space-y-3 overflow-hidden shadow-lg bg-white/5 p-3 hover:shadow-xl transition-shadow duration-300 cursor-pointer"
                                         onClick={() => { setShare(share); setOpen(true) }}
                                     >
                                         <img
@@ -71,7 +72,7 @@ const page = () => {
                                         <div className='h-0.5 w-full bg-white/10' />
                                         <div className="flex items-center gap-3 justify-between">
                                             <div className="flex flex-col gap-2 ">
-                                                <span className="text-xs text-gray-300  tracking-wider"> Your Shares</span>
+                                                <span className="text-xs text-gray-300  tracking-wider"> My Shares</span>
                                                 <div className="flex items-center gap-2">
                                                     <Layers className="text-emerald-400 w-6" />
                                                     <span className="text-xl font-bold text-white">{share?.shares.account.sharesPercentage?.toString()}%</span>
@@ -81,7 +82,7 @@ const page = () => {
                                                 <span className="text-xs text-gray-300  tracking-wider"> Monthly Rent</span>
                                                 <div className="flex items-center gap-2">
                                                     <Banknote className="text-emerald-400 w-6" />
-                                                    <span className="text-xl font-bold text-white">${share?.shares.account.monthlyRent.toString()}</span>
+                                                    <span className="text-xl font-bold text-white">${numeral(share?.shares.account.monthlyRent.toString()).format('0.0a').toUpperCase()}</span>
                                                 </div>
                                             </div>
                                         </div>
