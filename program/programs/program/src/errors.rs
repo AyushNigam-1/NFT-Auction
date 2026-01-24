@@ -2,6 +2,12 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum ErrorCode {
+    #[msg("Identity is not verified")]
+    IdentityNotVerified,
+
+    #[msg("Identity has been revoked")]
+    IdentityRevoked,
+
     #[msg("Vault does not exist")]
     InvalidVault,
 

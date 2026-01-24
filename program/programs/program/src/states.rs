@@ -30,3 +30,13 @@ pub struct ShareHolder {
     // pub last_claim: i64, // Timestamp for yield calc (future extension)
     pub bump: u8,
 }
+
+#[account]
+#[derive(InitSpace)]
+pub struct Identity {
+    pub owner: Pubkey,
+    pub issuer: Pubkey,
+    pub verified: bool,
+    pub revoked: bool,
+    pub created_at: i64,
+}

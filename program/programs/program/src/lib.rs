@@ -10,6 +10,16 @@ use anchor_spl::token_interface::{close_account, transfer_checked, CloseAccount,
 
 declare_id!("Dh43TjNE2obrC8ZZXgvjitekaDiLmnnTCLTqLwziWnwU");
 
+// 👇 declare external program
+#[derive(Clone)]
+pub struct IdentityRegistry;
+
+impl anchor_lang::Id for IdentityRegistry {
+    fn id() -> Pubkey {
+        pubkey!("6u94bx6UkkxxDZucnGRzoNKP48Y8DYc3ibDCpnUHo5Yj")
+    }
+}
+
 #[program]
 pub mod yieldhome {
 

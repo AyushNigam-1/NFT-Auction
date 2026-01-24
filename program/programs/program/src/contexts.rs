@@ -1,4 +1,6 @@
-use crate::{constants::*, states::*};
+use crate::{IdentityRegistry, constants::*, states::*};
+use crate::errors::ErrorCode;
+
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
@@ -28,7 +30,17 @@ pub struct CreateProperty<'info> {
     
     #[account(mut)]
     pub mint: InterfaceAccount<'info, Mint>,
+// 🔐 IDENTITY CHECK
+    #[account(
+        seeds = [b"identity", owner.key().as_ref()],
+        bump,
+        owner = identity_registry.key(),
+        constraint = identity.verified @ ErrorCode::IdentityNotVerified,
+        constraint = !identity.revoked @ ErrorCode::IdentityRevoked
+    )]
+    pub identity: Account<'info, Identity>,
 
+    pub identity_registry: Program<'info, IdentityRegistry>,
     #[account(
         init_if_needed,
         payer = owner,
@@ -111,7 +123,17 @@ pub struct BuyShares<'info> {
 
     /// The mint of the shared token
     pub mint: InterfaceAccount<'info, Mint>,
+    // 🔐 IDENTITY CHECK
+    #[account(
+        seeds = [b"identity", buyer.key().as_ref()],
+        bump,
+        owner = identity_registry.key(),
+        constraint = identity.verified @ ErrorCode::IdentityNotVerified,
+        constraint = !identity.revoked @ ErrorCode::IdentityRevoked
+    )]
+    pub identity: Account<'info, Identity>,
 
+    pub identity_registry: Program<'info, IdentityRegistry>,
     /// Vault token account (holds the available shares for this property)
     #[account(
         mut,

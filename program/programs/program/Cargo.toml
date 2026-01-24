@@ -22,7 +22,6 @@ custom-panic = []
 
 [dependencies]
 anchor-spl = "0.32.1"
-
 anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = [

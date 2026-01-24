@@ -105,9 +105,12 @@ const PropertyDetails = ({ open, setOpen, property, isShareHolder, shareHolder, 
                                         propertyDetails.map((detail) => {
                                             return (
                                                 <div className="flex flex-col gap-3 ">
-                                                    <span className="text-xs text-gray-400 uppercase tracking-widest font-bold ">{detail.title}</span>
+                                                    <span className="text-xs text-gray-400 uppercase tracking-widest font-bold ">{detail.title}
+
+                                                    </span>
                                                     <div className="flex items-center gap-3">
-                                                        {detail.icon}
+                                                        {/* {detail.icon} */}
+                                                        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMzNGQzOTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICA8cGF0aCBkPSJNMy44NSA4LjYyYTQgNCAwIDAgMSA0Ljc4LTQuNzcgNCA0IDAgMCAxIDYuNzQgMCA0IDQgMCAwIDEgNC43OCA0Ljc4IDQgNCAwIDAgMSAwIDYuNzQgNCA0IDAgMCAxLTQuNzcgNC43OCA0IDQgMCAwIDEtNi43NSAwIDQgNCAwIDAgMS00Ljc4LTQuNzcgNCA0IDAgMCAxIDAtNi43NloiLz4KICA8cGF0aCBkPSJtOSAxMiAyIDIgNC00Ii8+Cjwvc3ZnPg==" alt="" />
                                                         <span className="text-xl font-bold text-white">{detail.value}</span>
                                                     </div>
                                                 </div>

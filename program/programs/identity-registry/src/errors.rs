@@ -1,7 +1,9 @@
 use anchor_lang::prelude::*;
 
 #[error_code]
-pub enum IdentityRegistryError {
+pub enum IdentityError {
+    #[msg("Unauthorized access attempt")]
+    UnauthorizedIssuer,
     #[msg("Unauthorized access attempt")]
     Unauthorized,
     #[msg("Badge already issued to this recipient")]

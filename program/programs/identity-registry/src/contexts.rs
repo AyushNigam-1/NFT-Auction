@@ -1,57 +1,79 @@
+use crate::errors::IdentityError;
+use crate::states::*;
 use anchor_lang::prelude::*;
-
 #[derive(Accounts)]
-#[instruction(uri: String, name: String, symbol: String)]
-pub struct CreateKycMint<'info> {
+pub struct InitRegistry<'info> {
     #[account(
         init,
-        payer = payer,
-        seeds = [b"kyc_mint"],
-        bump,
-        mint::decimals = 0,
-        mint::authority = mint,
-        mint::freeze_authority = mint,
-        mint::token_program = token_program,
-        extensions::non_transferable::non_transferable,
-        extensions::metadata_pointer::authority = mint,
-        extensions::metadata_pointer::metadata_address = mint,
+        payer = authority,
+        space = 8 + 32
     )]
-    pub mint: InterfaceAccount<'info, Mint>,
+    pub registry: Account<'info, IdentityRegistry>,
 
-    #[account(mut)]
-    pub payer: Signer<'info>,
-
-    pub system_program: Program<'info, System>,
-    pub token_program: Interface<'info, TokenInterface>,
-}
-
-#[derive(Accounts)]
-pub struct IssueBadge<'info> {
-    /// The admin who pays for the badge issuance
     #[account(mut)]
     pub authority: Signer<'info>,
 
-    /// The recipient who will receive the badge
-    /// CHECK: This account is validated by the associated token account derivation
-    pub recipient: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct AddIssuer<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    #[account(mut, has_one = authority)]
+    pub registry: Account<'info, IdentityRegistry>,
+
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + 32 + 32,
+        seeds = [b"issuer", registry.key().as_ref(), issuer.key().as_ref()],
+        bump
+    )]
+    pub issuer_account: Account<'info, Issuer>,
+
+    pub issuer: SystemAccount<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct IssueIdentity<'info> {
+    #[account()]
+    pub registry: Account<'info, IdentityRegistry>,
+
+    #[account(
+        seeds = [b"issuer", registry.key().as_ref(), issuer.key().as_ref()],
+        bump
+    )]
+    pub issuer_account: Account<'info, Issuer>,
+
+    #[account(
+        init,
+        payer = issuer,
+        space = 8 + 32 + 32 + 1 + 1 + 8,
+        seeds = [b"identity", user.key().as_ref()],
+        bump
+    )]
+    pub identity: Account<'info, Identity>,
+
+    pub user: SystemAccount<'info>,
+    #[account(mut)]
+    pub issuer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct RevokeIdentity<'info> {
+    /// The issuer who originally verified this identity
+    #[account(mut)]
+    pub issuer: Signer<'info>,
 
     #[account(
         mut,
-        seeds = [b"kyc_mint"],
+        seeds = [b"identity", identity.owner.as_ref()],
         bump,
+        constraint = identity.issuer == issuer.key() @ IdentityError::UnauthorizedIssuer
     )]
-    pub mint: InterfaceAccount<'info, Mint>,
-
-    #[account(
-        init_if_needed,
-        payer = authority,
-        associated_token::mint = mint,
-        associated_token::authority = recipient,
-        associated_token::token_program = token_program,
-    )]
-    pub recipient_token_account: InterfaceAccount<'info, TokenAccount>,
-
-    pub system_program: Program<'info, System>,
-    pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub identity: Account<'info, Identity>,
 }

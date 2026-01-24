@@ -335,6 +335,24 @@ export const useProgramActions = () => {
 
         // ✅ Convert to raw amount
         const rawAmount = totalShares * Math.pow(10, decimals);
+        const [identityPda] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("identity"),
+                wallet.publicKey.toBuffer(),
+            ],
+            identityProgram!.programId
+        );
+        let identityAccount;
+
+        try {
+            identityAccount = await identityProgram!.account.identity.fetch(identityPda);
+        } catch {
+            throw new Error("Identity not found. Please verify your identity first.");
+        }
+
+        if (!identityAccount.verified || identityAccount.revoked) {
+            throw new Error("Identity is not verified or has been revoked.");
+        }
 
         const tx = await yieldProgram!.methods
             .createProperty(
@@ -597,23 +615,10 @@ export const useProgramActions = () => {
 }
 
 
+
 // {
-//   "name": "Verified Resident: Tier 1",
-//   "symbol": "VERIFIED",
-//   "description": "Identity verification for Premium Real Estate Platform. Non-transferable.",
-//   "image": "https://arweave.net/YOUR_SHIELD_IMAGE_URL.png",
-//   "attributes": [
-//     {
-//       "trait_type": "Status",
-//       "value": "Verified"
-//     },
-//     {
-//       "trait_type": "KYC Provider",
-//       "value": "Sumsub"
-//     },
-//     {
-//       "trait_type": "Jurisdiction",
-//       "value": "Global"
-//     }
-//   ]
+//     "name": "Verified User",
+//         "symbol": "VERIFIED",
+//             "description": "Identity verification for Premium Real Estate Platform. Non-transferable.",
+//                 "image": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMzNGQzOTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICA8cGF0aCBkPSJNMy44NSA4LjYyYTQgNCAwIDAgMSA0Ljc4LTQuNzcgNCA0IDAgMCAxIDYuNzQgMCA0IDQgMCAwIDEgNC43OCA0Ljc4IDQgNCAwIDAgMSAwIDYuNzQgNCA0IDAgMCAxLTQuNzcgNC43OCA0IDQgMCAwIDEtNi43NSAwIDQgNCAwIDAgMS00Ljc4LTQuNzcgNCA0IDAgMCAxIDAtNi43NloiLz4KICA8cGF0aCBkPSJtOSAxMiAyIDIgNC00Ii8+Cjwvc3ZnPg==",
 // }

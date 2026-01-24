@@ -19,7 +19,6 @@ default = []
 [dependencies]
 anchor-spl = { version = "0.32.1", features = ["token_2022"] }
 anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
-spl-token-metadata-interface = "0.8.0"
 
 [lints.rust]
 # unexpected_cfgs = { level = "warn", check-cfg = ['cfg(anchor_debug)'] }

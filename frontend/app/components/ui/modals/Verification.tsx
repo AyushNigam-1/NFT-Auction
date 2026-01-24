@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { usePrograms } from "@/app/hooks/useProgram";
 
-export default function VerificationModal({ isOpen, setIsOpen }) {
+export default function VerificationModal({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (val: boolean) => void }) {
     // const [isOpen, setIsOpen] = useState(false);
     const [status, setStatus] = useState<"idle" | "checking" | "uploading" | "minting" | "success">("checking");
     const [file, setFile] = useState<File | null>(null);
@@ -89,7 +89,7 @@ export default function VerificationModal({ isOpen, setIsOpen }) {
             // Wait 1s then redirect
             setTimeout(() => {
                 setIsOpen(false);
-                router.push("/dashboard");
+                router.push("/marketplace");
             }, 1000);
 
         } catch (error) {
@@ -137,7 +137,7 @@ export default function VerificationModal({ isOpen, setIsOpen }) {
                             leaveFrom="opacity-100 scale-100 translate-y-0"
                             leaveTo="opacity-0 scale-95 translate-y-4"
                         >
-                            <DialogPanel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-[#0F1115] border border-white/10 p-6  align-middle shadow-xl transition-all font-mono space-y-4 ">
+                            <DialogPanel className="w-full max-w-lg transform overflow-hidden rounded-2xl bg-white/5 border border-white/10 p-6  align-middle shadow-xl transition-all font-mono space-y-4 ">
 
                                 {/* Header */}
                                 <ShieldAlert className="text-emerald-400 mx-auto" size={40} />
@@ -147,11 +147,11 @@ export default function VerificationModal({ isOpen, setIsOpen }) {
                                 </DialogTitle>
                                 <div className="">
                                     <p className="text-sm text-gray-400">
-                                        To access the dashboard and buy property shares, we require a government-issued ID for regulatory compliance.
+                                        To buy and sell property shares, we require a government-issued ID for regulatory compliance.
                                     </p>
                                 </div>
                                 {/* Dynamic Content based on Status */}
-                                <div className="space-y-4">
+                                <div className="space-y-6">
 
                                     {/* STATE: SUCCESS */}
                                     {status === 'success' ? (
@@ -165,12 +165,12 @@ export default function VerificationModal({ isOpen, setIsOpen }) {
                                         <>
                                             {/* File Upload Zone */}
                                             <label className={`
-                                                flex flex-col items-center justify-center w-full h-32 
+                                                flex flex-col items-center justify-center w-full h-44 
                                                 border-2 border-dashed rounded-xl cursor-pointer 
                                                 transition-colors duration-200
                                                 ${file ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/20 hover:border-emerald-400 hover:bg-white/5'}
                                             `}>
-                                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                <div className="flex flex-col items-center justify-center ">
                                                     {file ? (
                                                         <>
                                                             <FileText className="w-8 h-8 text-emerald-400 mb-2" />
@@ -178,13 +178,13 @@ export default function VerificationModal({ isOpen, setIsOpen }) {
                                                             <p className="text-xs text-emerald-400 mt-1">Ready to submit</p>
                                                         </>
                                                     ) : (
-                                                        <>
-                                                            <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                                                        <div className="space-y-4 flex items-center flex-col">
+                                                            <Upload className="w-8 h-8 text-gray-400" />
                                                             <p className="text-sm text-gray-400">
                                                                 <span className="font-semibold text-white">Click to upload</span> or drag and drop
                                                             </p>
                                                             <p className="text-xs text-gray-500">SVG, PNG, JPG or PDF (MAX. 5MB)</p>
-                                                        </>
+                                                        </div>
                                                     )}
                                                 </div>
                                                 <input
@@ -218,11 +218,12 @@ export default function VerificationModal({ isOpen, setIsOpen }) {
                                         "Submit Verification"
                                     )}
                                 </button>
+                                <button className="text-sm " onClick={() => router.push("/marketplace")}>I'll do this later</button>
                             </DialogPanel>
                         </TransitionChild>
                     </div>
                 </div>
             </Dialog>
-        </Transition>
+        </Transition >
     );
 }
