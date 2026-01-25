@@ -28,4 +28,16 @@ pub enum ErrorCode {
 
     #[msg("Unauthorized: Only the property owner can perform this action.")]
     UnauthorizedOwner, // For deposit_rent has_one checks
+
+    #[msg("Trading is currently frozen by the admin.")]
+    TradingFrozen,
+
+    #[msg("Transaction exceeds the maximum allowed shares.")]
+    LimitExceeded,
+
+    #[msg("The Dealer vault does not have enough cash to buy your shares.")]
+    InsufficientDealerLiquidity,
+
+    #[msg("Slippage tolerance exceeded.")]
+    SlippageExceeded,
 }

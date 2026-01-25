@@ -15,12 +15,13 @@ import {
     ShieldAlert,
 } from "lucide-react";
 import { usePrograms } from "@/app/hooks/useProgram";
+import { useMutations } from "@/app/hooks/useMutations";
 
 export default function VerificationModal({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (val: boolean) => void }) {
     // const [isOpen, setIsOpen] = useState(false);
     const [status, setStatus] = useState<"idle" | "checking" | "uploading" | "minting" | "success">("checking");
     const [file, setFile] = useState<File | null>(null);
-
+    const { createVerificationRequest } = useMutations()
     const { publicKey } = useWallet();
     const { connection } = useConnection();
     const router = useRouter();
@@ -64,40 +65,6 @@ export default function VerificationModal({ isOpen, setIsOpen }: { isOpen: boole
 
         checkEligibility();
     }, [publicKey, connection, router]);
-
-    // ---------------------------------------------------------
-    // 2. MOCK UPLOAD & MINT ACTION
-    // ---------------------------------------------------------
-    const handleUploadAndMint = async () => {
-        if (!file || !publicKey || !identityProgram) return;
-
-        try {
-            setStatus("uploading");
-
-            // SIMULATION: Upload to server
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
-            setStatus("minting");
-
-            // REAL ON-CHAIN ACTION: Issue the badge
-            // In a real app, this happens on the backend. 
-            // For your DEMO, we call it here so you can test the flow.
-            // await issueBadge(identityProgram, publicKey, publicKey); // Self-mint for demo
-
-            setStatus("success");
-
-            // Wait 1s then redirect
-            setTimeout(() => {
-                setIsOpen(false);
-                router.push("/marketplace");
-            }, 1000);
-
-        } catch (error) {
-            console.error("Verification failed:", error);
-            setStatus("idle");
-            alert("Verification Failed. See console.");
-        }
-    };
 
     // Helper to handle drag-drop
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -203,16 +170,12 @@ export default function VerificationModal({ isOpen, setIsOpen }: { isOpen: boole
                                 <button
                                     type="button"
                                     disabled={!file || status !== 'idle'}
-                                    onClick={handleUploadAndMint}
+                                    onClick={() => createVerificationRequest.mutate({ files: [file!], walletAddress: publicKey!.toBase58() })}
                                     className="w-full inline-flex justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                                 >
-                                    {status === 'uploading' ? (
+                                    {createVerificationRequest.isPending ? (
                                         <span className="flex items-center gap-2">
                                             <Loader2 className="animate-spin h-4 w-4" /> Uploading Document...
-                                        </span>
-                                    ) : status === 'minting' ? (
-                                        <span className="flex items-center gap-2">
-                                            <Loader2 className="animate-spin h-4 w-4" /> Minting Soulbound ID...
                                         </span>
                                     ) : (
                                         "Submit Verification"

@@ -4,7 +4,7 @@ import { PropertyFormData } from "../types";
 import { uploadFileToPinata, uploadMetadataToPinata } from "../utils/pinata";
 import { PublicKey } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
-import { number } from "framer-motion";
+import axios from "axios";
 
 export const useMutations = () => {
     const programActions = useProgramActions()
@@ -83,6 +83,37 @@ export const useMutations = () => {
         onError: (error: any) => {
             console.error("Failed to create property:", error);
             // toast.error("Failed to upload assets.");
+        },
+    });
+
+    type VerifyUserInput = {
+        walletAddress: string;
+        files: File[];
+    };
+    type CreateVerificationPayload = {
+        walletAddress: string;
+        documentUris: string[];
+    };
+
+    const createVerificationRequest = useMutation({
+        mutationFn: async ({ walletAddress, files }: VerifyUserInput) => {
+            if (!files.length) {
+                throw new Error("No documents provided");
+            }
+
+            // 1️⃣ Upload all files to Pinata (parallel)
+            const documentUris = await Promise.all(
+                files.map((file) => uploadFileToPinata(file))
+            );
+
+            // 2️⃣ Convert to ipfs:// URIs
+            // 3️⃣ Call backend
+            console.log(documentUris, walletAddress)
+            const { data } = await axios.post("http://127.0.0.1:3001/api/verify", {
+                wallet_address: walletAddress,
+                document_uris: documentUris,
+            });
+            return data
         },
     });
 
@@ -200,5 +231,5 @@ export const useMutations = () => {
             // console.error("Buy shares error:", error);
         },
     });
-    return { createProperty, deleteProperty, buyShares, cancelShares, depositRent, claimYield }
+    return { createProperty, deleteProperty, buyShares, cancelShares, depositRent, claimYield, createVerificationRequest }
 }

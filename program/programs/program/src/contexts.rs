@@ -8,6 +8,114 @@ use anchor_spl::{
 };
 
 #[derive(Accounts)]
+pub struct InitializeDealer<'info> {
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    
+    // CHANGE 1: Use InterfaceAccount for mints to match TokenInterface
+    pub property_mint: InterfaceAccount<'info, Mint>,
+    
+    pub payment_mint: InterfaceAccount<'info, Mint>, // USDC
+
+    #[account(
+        init,
+        payer = admin,
+        space = 8 + DealerState::INIT_SPACE,
+        seeds = [b"dealer", property_mint.key().as_ref()],
+        bump
+    )]
+    pub dealer_state: Account<'info, DealerState>,
+
+    // Holds the Inventory (House Shares)
+    #[account(
+        init,
+        payer = admin,
+        token::mint = property_mint,
+        token::authority = dealer_state,
+        seeds = [b"dealer_share_vault", property_mint.key().as_ref()],
+        bump
+    )]
+    pub dealer_share_vault: InterfaceAccount<'info, TokenAccount>,
+
+    // Holds the Cash (USDC)
+    #[account(
+        init,
+        payer = admin,
+        token::mint = payment_mint,
+        token::authority = dealer_state,
+        seeds = [b"dealer_payment_vault", property_mint.key().as_ref()],
+        bump
+    )]
+    pub dealer_payment_vault: InterfaceAccount<'info, TokenAccount>,
+
+    pub system_program: Program<'info, System>,
+    
+    // This interface requires the mints to be InterfaceAccount
+    pub token_program: Interface<'info, TokenInterface>, 
+    
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+pub struct TradeDealer<'info> {
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"dealer", dealer_state.property_mint.as_ref()],
+        bump = dealer_state.bump,
+        has_one = property_mint,
+        has_one = payment_mint
+    )]
+    pub dealer_state: Account<'info, DealerState>,
+
+    // 2. CHANGE: 'Box<Account<...>>' -> 'InterfaceAccount<...>'
+    // This allows the Mint to be EITHER Legacy or Token-2022
+    #[account(mut, address = dealer_state.property_mint)]
+    pub property_mint: InterfaceAccount<'info, Mint>,
+
+    #[account(mut, address = dealer_state.payment_mint)]
+    pub payment_mint: InterfaceAccount<'info, Mint>,
+
+    // 3. CHANGE: Use InterfaceAccount for Vaults
+    #[account(
+        mut, 
+        seeds = [b"dealer_share_vault", property_mint.key().as_ref()], 
+        bump,
+        token::mint = property_mint,
+        token::authority = dealer_state,
+    )]
+    pub dealer_share_vault: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(
+        mut, 
+        seeds = [b"dealer_payment_vault", property_mint.key().as_ref()], 
+        bump,
+        token::mint = payment_mint,
+        token::authority = dealer_state,
+    )]
+    pub dealer_payment_vault: InterfaceAccount<'info, TokenAccount>,
+
+    // User Accounts
+    #[account(
+        mut,
+        token::mint = property_mint
+    )] 
+    pub user_share_account: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        token::mint = payment_mint
+    )] 
+    pub user_payment_account: InterfaceAccount<'info, TokenAccount>,
+
+    // 4. CHANGE: Use 'TokenInterface' to allow EITHER program
+    pub token_program: Interface<'info, TokenInterface>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 pub struct CreateProperty<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,

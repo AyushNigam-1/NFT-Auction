@@ -1,12 +1,15 @@
 use crate::errors::IdentityError;
 use crate::states::*;
 use anchor_lang::prelude::*;
+
 #[derive(Accounts)]
 pub struct InitRegistry<'info> {
     #[account(
-        init,
+        init_if_needed,
         payer = authority,
-        space = 8 + 32
+        space = 8+IdentityRegistry::INIT_SPACE,
+        seeds = [b"registry"],
+        bump
     )]
     pub registry: Account<'info, IdentityRegistry>,
 
@@ -24,9 +27,9 @@ pub struct AddIssuer<'info> {
     pub registry: Account<'info, IdentityRegistry>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = authority,
-        space = 8 + 32 + 32,
+        space = 8 + Issuer::INIT_SPACE,
         seeds = [b"issuer", registry.key().as_ref(), issuer.key().as_ref()],
         bump
     )]
@@ -51,7 +54,7 @@ pub struct IssueIdentity<'info> {
     #[account(
         init,
         payer = issuer,
-        space = 8 + 32 + 32 + 1 + 1 + 8,
+        space = 8 + Identity::INIT_SPACE,
         seeds = [b"identity", user.key().as_ref()],
         bump
     )]

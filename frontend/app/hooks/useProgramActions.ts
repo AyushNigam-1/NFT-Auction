@@ -4,7 +4,7 @@ import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, TransactionInstruction } fr
 import { BN, utils, web3 } from "@coral-xyz/anchor";
 import { usePrograms } from "./useProgram";
 import { getMintProgramId } from "../utils";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress, getAssociatedTokenAddressSync, getMint, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress, getAssociatedTokenAddressSync, getMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { Console } from "console";
 import { publicKey } from "@metaplex-foundation/umi";
 
@@ -525,100 +525,156 @@ export const useProgramActions = () => {
     const KYC_MINT_SEED = "kyc_mint";
 
     // -------------------------------------------------------------------------
-    // Function 1: Initialize the Soulbound Mint (Admin Only)
-    // -------------------------------------------------------------------------
-    const createKycMint = async (
-        name: string,
-        symbol: string,
-        uri: string
-    ) => {
-        try {
-            // 1. Derive the Mint PDA
-            // seeds = [b"kyc_mint"]
-            const [mintPda] = PublicKey.findProgramAddressSync(
-                [Buffer.from(KYC_MINT_SEED)],
-                identityProgram!.programId
-            );
-
-            console.log("Derived Mint PDA:", mintPda.toBase58());
-
-            // 2. Execute Transaction
-            const tx = await identityProgram!.methods
-                .createKycMint(uri, name, symbol)
-                .accounts({
-                    payer: wallet.publicKey!,
-                    // mint: mintPda,
-                    // systemProgram: SystemProgram.programId,
-                    // tokenProgram: TOKEN_2022_PROGRAM_ID, // <--- CRITICAL: Must be Token-2022
-                })
-                .rpc();
-
-            console.log("✅ Mint Initialized! Tx:", tx);
-            return mintPda; // Return the PDA so you can save it to your database/constants
-
-        } catch (error) {
-            console.error("❌ Failed to create mint:", error);
-            throw error;
-        }
-    };
-
-    // -------------------------------------------------------------------------
     // Function 2: Issue Badge to a User (Server-Side or Admin Wallet)
     // -------------------------------------------------------------------------
-    const issueBadge = async (
-        adminPublicKey: PublicKey, // The wallet paying for the mint (Admin)
-        recipientPublicKey: PublicKey // The user receiving the badge
-    ) => {
+
+    async function issueIdentity(
+        identityProgram: any,
+        registryPda: PublicKey,
+        issuerPda: PublicKey,
+        userPubkey: PublicKey,
+        issuerPubkey: PublicKey
+    ) {
+        // -----------------------------
+        // 1. Derive Identity PDA
+        // PDA("identity", user)
+        // -----------------------------
+        const [identityPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("identity"), userPubkey.toBuffer()],
+            identityProgram.programId
+        );
+
+        // -----------------------------
+        // 2. Call issue_identity
+        // -----------------------------
+        const tx = await identityProgram.methods
+            .issueIdentity()
+            .accounts({
+                registry: registryPda,
+                issuerAccount: issuerPda,
+                identity: identityPda,
+                user: userPubkey,
+                issuer: issuerPubkey,
+                systemProgram: SystemProgram.programId,
+            })
+            .rpc();
+
+        return {
+            tx,
+            identityPda,
+        };
+    }
+    interface TradeParams {
+        program: any;            // Anchor Program
+        wallet: any;             // Connected Wallet
+        propertyMint: PublicKey; // The House Token Mint
+        quantity: number;        // Number of shares
+    }
+
+    const handleBuy = async ({
+        propertyMint,
+        quantity
+    }: TradeParams) => {
+        if (!wallet.publicKey) throw new Error("Wallet not connected");
+
         try {
-            // 1. Derive the Mint PDA again
-            const [mintPda] = PublicKey.findProgramAddressSync(
-                [Buffer.from(KYC_MINT_SEED)],
-                identityProgram!.programId
+            console.log(`Buying ${quantity} shares (Base + 2% Fee)...`);
+
+            // 1. Derive Dealer State PDA
+            const [dealerStatePda] = PublicKey.findProgramAddressSync(
+                [Buffer.from("dealer"), propertyMint.toBuffer()],
+                yieldProgram!.programId
             );
 
-            // 2. Derive the Recipient's ATA (Associated Token Account)
-            // MUST use Token-2022 Program ID for derivation
-            const recipientTokenAccount = getAssociatedTokenAddressSync(
-                mintPda,
-                recipientPublicKey,
-                false, // allowOwnerOffCurve (usually false)
-                TOKEN_2022_PROGRAM_ID,
-                ASSOCIATED_TOKEN_PROGRAM_ID
+            // 2. Derive Dealer Share Vault PDA (Where shares come from)
+            const [dealerShareVault] = PublicKey.findProgramAddressSync(
+                [Buffer.from("dealer_share_vault"), propertyMint.toBuffer()],
+                yieldProgram!.programId
             );
 
-            console.log(" issuing badge to ATA:", recipientTokenAccount.toBase58());
+            // 3. Get User's Property Token Account (ATA)
+            // NOTE: If this is the user's first buy, this account must be created first.
+            // Most dApps bundle the 'createAccount' instruction here if it doesn't exist.
+            const userShareAta = getAssociatedTokenAddressSync(
+                propertyMint,
+                wallet.publicKey,
+                false,
+                TOKEN_2022_PROGRAM_ID
+            );
 
-            // 3. Execute Transaction
-            const tx = await identityProgram!.methods
-                .issueBadge()
+            // 4. Send Transaction
+            const tx = await yieldProgram!.methods
+                .buyFromDealer(new BN(quantity))
                 .accounts({
-                    authority: adminPublicKey, // Admin signs
-                    mint: mintPda,
-                    recipient: recipientPublicKey,
-                    recipientTokenAccount: recipientTokenAccount, // The ATA we derived
-                    systemProgram: SystemProgram.programId,
+                    user: wallet.publicKey,
+                    dealerState: dealerStatePda,
+                    propertyMint: propertyMint,
+                    dealerShareVault: dealerShareVault,
+                    userShareAccount: userShareAta,
                     tokenProgram: TOKEN_2022_PROGRAM_ID,
-                    associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+                    systemProgram: SystemProgram.programId,
                 })
                 .rpc();
 
-            console.log("✅ Badge Issued! Tx:", tx);
+            console.log("✅ Buy Successful! TX:", tx);
             return tx;
 
         } catch (error) {
-            console.error("❌ Failed to issue badge:", error);
+            console.error("❌ Buy Failed:", error);
+            throw error;
+        }
+    };
+    const handleSell = async ({
+        propertyMint,
+        quantity
+    }: TradeParams) => {
+        if (!wallet.publicKey) throw new Error("Wallet not connected");
+
+        try {
+            console.log(`Selling ${quantity} shares (Base - 2% Fee)...`);
+
+            // 1. Derive Dealer State PDA
+            const [dealerStatePda] = PublicKey.findProgramAddressSync(
+                [Buffer.from("dealer"), propertyMint.toBuffer()],
+                yieldProgram!.programId
+            );
+
+            // 2. Derive Dealer Share Vault PDA (Where shares go to)
+            const [dealerShareVault] = PublicKey.findProgramAddressSync(
+                [Buffer.from("dealer_share_vault"), propertyMint.toBuffer()],
+                yieldProgram!.programId
+            );
+
+            // 3. Get User's Property Token Account
+            const userShareAta = getAssociatedTokenAddressSync(
+                propertyMint,
+                wallet.publicKey,
+                false,
+                TOKEN_2022_PROGRAM_ID
+            );
+
+            // 4. Send Transaction
+            const tx = await yieldProgram!.methods
+                .sellToDealer(new BN(quantity))
+                .accounts({
+                    user: wallet.publicKey,
+                    dealerState: dealerStatePda,
+                    propertyMint: propertyMint,
+                    dealerShareVault: dealerShareVault,
+                    userShareAccount: userShareAta,
+                    tokenProgram: TOKEN_2022_PROGRAM_ID,
+                    systemProgram: SystemProgram.programId,
+                })
+                .rpc();
+
+            console.log("✅ Sell Successful! TX:", tx);
+            return tx;
+
+        } catch (error) {
+            console.error("❌ Sell Failed:", error);
             throw error;
         }
     };
 
-    return { createProperty, deleteProperty, getAllProperties, buyShares, getAllShares, getMyListings, forceCloseShareholder, depositRent, claimYield, createKycMint, issueBadge }
+    return { createProperty, deleteProperty, getAllProperties, buyShares, getAllShares, getMyListings, forceCloseShareholder, depositRent, claimYield, issueIdentity, handleBuy, handleSell }
 }
-
-
-
-// {
-//     "name": "Verified User",
-//         "symbol": "VERIFIED",
-//             "description": "Identity verification for Premium Real Estate Platform. Non-transferable.",
-//                 "image": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMzNGQzOTkiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj4KICA8cGF0aCBkPSJNMy44NSA4LjYyYTQgNCAwIDAgMSA0Ljc4LTQuNzcgNCA0IDAgMCAxIDYuNzQgMCA0IDQgMCAwIDEgNC43OCA0Ljc4IDQgNCAwIDAgMSAwIDYuNzQgNCA0IDAgMCAxLTQuNzcgNC43OCA0IDQgMCAwIDEtNi43NSAwIDQgNCAwIDAgMS00Ljc4LTQuNzcgNCA0IDAgMCAxIDAtNi43NloiLz4KICA8cGF0aCBkPSJtOSAxMiAyIDIgNC00Ii8+Cjwvc3ZnPg==",
-// }

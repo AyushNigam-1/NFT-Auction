@@ -68,3 +68,17 @@ export interface PropertyData extends PropertyFormData {
     metadataUri: string;
     bump: number;
 }
+
+
+export type VerificationRequest = {
+    id: string;
+    wallet_address: string;
+    document_uris: string[]; // ipfs://...
+    status: "pending" | "approved" | "rejected" | "revoked";
+    requested_at: string;
+    reviewed_at?: string;
+    reviewer_wallet?: string;
+    review_reason?: string;
+    identity_pda?: string;
+    issue_tx_signature?: string;
+};

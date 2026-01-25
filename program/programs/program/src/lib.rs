@@ -16,7 +16,7 @@ pub struct IdentityRegistry;
 
 impl anchor_lang::Id for IdentityRegistry {
     fn id() -> Pubkey {
-        pubkey!("6u94bx6UkkxxDZucnGRzoNKP48Y8DYc3ibDCpnUHo5Yj")
+        return pubkey!("6u94bx6UkkxxDZucnGRzoNKP48Y8DYc3ibDCpnUHo5Yj");
     }
 }
 
@@ -251,6 +251,137 @@ pub mod yieldhome {
         )?;
 
         msg!("Claimed {} lamports from property vault", amount_to_claim);
+        Ok(())
+    }
+    // =========================================================================
+    // 🏦 DEALER MODULE (Liquidity Engine)
+    // =========================================================================
+
+    pub fn initialize_dealer(
+        ctx: Context<InitializeDealer>,
+        buy_price: u64,
+        sell_price: u64,
+        max_shares: u64,
+    ) -> Result<()> {
+        let dealer = &mut ctx.accounts.dealer_state;
+        dealer.admin = ctx.accounts.admin.key();
+        dealer.property_mint = ctx.accounts.property_mint.key();
+        dealer.payment_mint = ctx.accounts.payment_mint.key();
+        dealer.buy_price = buy_price;
+        dealer.sell_price = sell_price;
+        dealer.max_shares_per_tx = max_shares;
+        dealer.is_frozen = false;
+        dealer.bump = ctx.bumps.dealer_state;
+        Ok(())
+    }
+
+    // USER BUYS FROM DEALER (Inventory -> User)
+    // USER BUYS FROM DEALER (User pays SOL -> Gets Shares)
+    pub fn buy_from_dealer(ctx: Context<TradeDealer>, quantity: u64) -> Result<()> {
+        let dealer = &ctx.accounts.dealer_state;
+        require!(!dealer.is_frozen, ErrorCode::TradingFrozen);
+        require!(
+            quantity <= dealer.max_shares_per_tx,
+            ErrorCode::LimitExceeded
+        );
+
+        // 1. Calculate Base Cost
+        let base_cost = quantity
+            .checked_mul(dealer.base_price)
+            .ok_or(ErrorCode::MathOverflow)?;
+
+        // 2. Calculate 2% Fee (Basis Points: 2% = 200 bps, but simple math: * 102 / 100)
+        // Formula: Total = Base * 1.02
+        let total_cost = base_cost
+            .checked_mul(102)
+            .ok_or(ErrorCode::MathOverflow)?
+            .checked_div(100)
+            .ok_or(ErrorCode::MathOverflow)?;
+
+        // 3. Transfer SOL (User -> Dealer)
+        let cpi_context = CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            anchor_lang::system_program::Transfer {
+                from: ctx.accounts.user.to_account_info(),
+                to: ctx.accounts.dealer_state.to_account_info(),
+            },
+        );
+        anchor_lang::system_program::transfer(cpi_context, total_cost)?;
+
+        // 4. Transfer Shares (Dealer -> User)
+        let seeds = &[
+            b"dealer".as_ref(),
+            dealer.property_mint.as_ref(),
+            &[dealer.bump],
+        ];
+        let signer = &[&seeds[..]];
+
+        anchor_spl::token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                anchor_spl::token::Transfer {
+                    from: ctx.accounts.dealer_share_vault.to_account_info(),
+                    to: ctx.accounts.user_share_account.to_account_info(),
+                    authority: ctx.accounts.dealer_state.to_account_info(),
+                },
+                signer,
+            ),
+            quantity,
+        )?;
+
+        Ok(())
+    }
+
+    // USER SELLS TO DEALER (User -> Inventory) [THE INSTANT LIQUIDITY]
+    pub fn sell_to_dealer(ctx: Context<TradeDealer>, quantity: u64) -> Result<()> {
+        let dealer = &ctx.accounts.dealer_state;
+        require!(!dealer.is_frozen, ErrorCode::TradingFrozen);
+
+        // 1. Calculate Base Value
+        let base_value = quantity
+            .checked_mul(dealer.base_price)
+            .ok_or(ErrorCode::MathOverflow)?;
+
+        // 2. Calculate Payout with 2% Deduction
+        // Formula: Payout = Base * 0.98
+        let payout = base_value
+            .checked_mul(98)
+            .ok_or(ErrorCode::MathOverflow)?
+            .checked_div(100)
+            .ok_or(ErrorCode::MathOverflow)?;
+
+        // 3. Check Liquidity
+        let dealer_lamports = ctx.accounts.dealer_state.to_account_info().lamports();
+        require!(
+            dealer_lamports >= payout,
+            ErrorCode::InsufficientDealerLiquidity
+        );
+
+        // 4. Transfer Shares (User -> Dealer)
+        anchor_spl::token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                anchor_spl::token::Transfer {
+                    from: ctx.accounts.user_share_account.to_account_info(),
+                    to: ctx.accounts.dealer_share_vault.to_account_info(),
+                    authority: ctx.accounts.user.to_account_info(),
+                },
+            ),
+            quantity,
+        )?;
+
+        // 5. Transfer SOL (Dealer -> User)
+        **ctx
+            .accounts
+            .dealer_state
+            .to_account_info()
+            .try_borrow_mut_lamports()? -= payout;
+        **ctx
+            .accounts
+            .user
+            .to_account_info()
+            .try_borrow_mut_lamports()? += payout;
+
         Ok(())
     }
 }

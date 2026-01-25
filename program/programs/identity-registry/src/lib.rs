@@ -14,7 +14,12 @@ pub mod identity_registry {
         Ok(())
     }
 
-    pub fn add_issuer(_ctx: Context<AddIssuer>) -> Result<()> {
+    pub fn add_issuer(ctx: Context<AddIssuer>) -> Result<()> {
+        let issuer_account = &mut ctx.accounts.issuer_account;
+
+        issuer_account.registry = ctx.accounts.registry.key();
+        issuer_account.issuer = ctx.accounts.issuer.key();
+
         Ok(())
     }
 
