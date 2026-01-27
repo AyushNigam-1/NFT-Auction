@@ -14,7 +14,7 @@ use crate::state::AppState;
 use tower_http::cors::Any;
 use tower_http::cors::CorsLayer;
 use tracing_subscriber;
-// mod solana_client;
+mod solana_client;
 // mod types;
 // use crate::worker::run_keeper;
 
@@ -23,8 +23,10 @@ async fn main() {
     dotenv().ok();
     tracing_subscriber::fmt::init();
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
-    let app_state = AppState::new(&database_url).await;
+    let solana_url = "https://api.devnet.solana.com";
+    let keypair_path = "/home/ayu/.config/solana/id.json";
+    let program_id = "6u94bx6UkkxxDZucnGRzoNKP48Y8DYc3ibDCpnUHo5Yj";
+    let app_state = AppState::new(&database_url, solana_url, keypair_path, program_id).await;
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)

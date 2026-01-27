@@ -1,9 +1,11 @@
 use axum::Json as AxumJson;
 use axum::{Extension, extract::Path, http::StatusCode};
-
 use chrono::Utc;
+use solana_sdk::pubkey::Pubkey;
 use sqlx::types::Json as DbJson;
 use sqlx::{PgPool, Row, postgres::PgRow};
+use std::str::FromStr;
+use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::{
@@ -14,9 +16,6 @@ use crate::{
     state::AppState,
 };
 
-/// -----------------------------------------------------
-/// Create verification request
-/// -----------------------------------------------------
 pub async fn create_verification_request(
     Extension(state): Extension<AppState>,
     AxumJson(payload): AxumJson<CreateVerificationRequest>,
@@ -133,14 +132,69 @@ pub async fn get_all_verification_requests(
     Ok(AxumJson(result))
 }
 
-/// -----------------------------------------------------
-/// Approve / Reject verification request
-/// -----------------------------------------------------
 pub async fn review_verification_request(
     Path(request_id): Path<Uuid>,
     Extension(state): Extension<AppState>,
     AxumJson(payload): AxumJson<ReviewVerificationPayload>,
 ) -> Result<StatusCode, StatusCode> {
+    // ---------------------------------------------------------
+    // STEP 1: Fetch the Wallet Address & Current Status from DB
+    // ---------------------------------------------------------
+    // We need the user's wallet address to interact with the blockchain.
+    println!("called verification request");
+    let request_data = sqlx::query!(
+        "SELECT wallet_address, status FROM verification_requests WHERE id = $1",
+        request_id
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        error!("DB Error fetching request: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?
+    .ok_or(StatusCode::NOT_FOUND)?;
+
+    let user_wallet =
+        Pubkey::from_str(&request_data.wallet_address).map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    // ---------------------------------------------------------
+    // STEP 2: Handle Blockchain Interactions
+    // ---------------------------------------------------------
+    if payload.approve {
+        // === APPROVAL LOGIC ===
+        // Only issue on-chain if it's not already approved to save gas/errors
+        if request_data.status != "approved" {
+            info!("Minting identity on-chain for: {}", user_wallet);
+
+            match state.solana.issue_identity_on_chain(user_wallet).await {
+                Ok(sig) => info!("✅ On-chain Identity Issued: {}", sig),
+                Err(e) => {
+                    error!("❌ Failed to issue identity: {:?}", e);
+                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                }
+            }
+        }
+    } else {
+        // === REJECTION LOGIC ===
+        // If we are rejecting, we might want to ensure any existing identity is revoked.
+        // If this is a fresh rejection (status was "pending"), this call might fail
+        // because the account doesn't exist yet. We can ignore that specific error.
+
+        info!("Ensuring identity is revoked for: {}", user_wallet);
+
+        match state.solana.revoke_identity_on_chain(user_wallet).await {
+            Ok(sig) => info!("✅ On-chain Identity Revoked: {}", sig),
+            Err(e) => {
+                // If error is "AccountNotFound", it means they never had an identity, which is fine.
+                // We log it but continue to update DB to "Rejected".
+                error!("⚠️ Revoke failed (user might not have identity): {:?}", e);
+            }
+        }
+    }
+
+    // ---------------------------------------------------------
+    // STEP 3: Update Database Status
+    // ---------------------------------------------------------
     let new_status = if payload.approve {
         VerificationStatus::Approved
     } else {
@@ -150,13 +204,12 @@ pub async fn review_verification_request(
     let result = sqlx::query(
         r#"
         UPDATE verification_requests
-        SET
+        SET 
             status = $1,
             reviewed_at = $2,
             reviewer_wallet = $3,
             review_reason = $4
         WHERE id = $5
-          AND status = 'pending'
         "#,
     )
     .bind(new_status.as_str())
@@ -166,7 +219,10 @@ pub async fn review_verification_request(
     .bind(request_id)
     .execute(&state.db)
     .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    .map_err(|e| {
+        error!("DB Update Error: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     if result.rows_affected() == 0 {
         return Err(StatusCode::CONFLICT);

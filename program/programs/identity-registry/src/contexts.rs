@@ -76,7 +76,8 @@ pub struct RevokeIdentity<'info> {
         mut,
         seeds = [b"identity", identity.owner.as_ref()],
         bump,
-        constraint = identity.issuer == issuer.key() @ IdentityError::UnauthorizedIssuer
+        constraint = identity.issuer == issuer.key() @ IdentityError::UnauthorizedIssuer,
+        close = issuer
     )]
     pub identity: Account<'info, Identity>,
 }

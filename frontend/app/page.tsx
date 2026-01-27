@@ -1,5 +1,5 @@
 "use client";
-import { useWalletModal, WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { useWalletModal } from "@solana/wallet-adapter-react-ui";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -81,9 +81,9 @@ const LoginPage = () => {
               )}
             </motion.button>
           </motion.div>
-          <VerificationModal isOpen={isOpen} setIsOpen={setIsOpen} />
         </div>
       </motion.div>
+      <VerificationModal isOpen={isOpen} setIsOpen={setIsOpen} />
     </div>
   );
 };

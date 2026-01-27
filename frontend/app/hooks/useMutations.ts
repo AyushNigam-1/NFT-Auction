@@ -117,6 +117,34 @@ export const useMutations = () => {
         },
     });
 
+
+    interface ReviewVerificationPayload {
+        approve: boolean;
+        review_reason: string | null;
+    }
+
+    const reviewVerification = useMutation({
+        mutationFn: async ({ id, payload }: { id: string; payload: ReviewVerificationPayload }) => {
+            // 2. PATCH request matching your Axum route: "/admin/verify/{id}"
+            console.log(id, payload)
+
+            const res = await axios.patch(
+                `http://127.0.0.1:3001/api/admin/verify/${id}`,
+                payload
+            );
+            console.log(res)
+            return res.data;
+        },
+        // 3. On success, refresh the list automatically
+        onSuccess: () => {
+            // queryClient.invalidateQueries({ queryKey: ["verification-requests"] });
+        },
+        onError: (error) => {
+            console.error("Verification review failed:", error);
+        },
+    });
+
+
     const deleteProperty = useMutation({
         // mutationKey: ["deleteProperty"],
         retry: 0,
@@ -231,5 +259,5 @@ export const useMutations = () => {
             // console.error("Buy shares error:", error);
         },
     });
-    return { createProperty, deleteProperty, buyShares, cancelShares, depositRent, claimYield, createVerificationRequest }
+    return { createProperty, deleteProperty, buyShares, cancelShares, depositRent, claimYield, createVerificationRequest, reviewVerification }
 }

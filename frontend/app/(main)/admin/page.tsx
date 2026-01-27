@@ -4,6 +4,8 @@ import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { Copy, FileText, CheckCircle, XCircle, Clock, User } from "lucide-react"; // Assuming you use Lucide or similar icons
 import Header from "@/app/components/ui/layout/Header";
+import { useMutations } from "@/app/hooks/useMutations";
+import Loader from "@/app/components/ui/layout/Loader";
 
 // Types based on your JSON
 interface VerificationRequest {
@@ -23,7 +25,7 @@ const VerificationDashboard = () => {
             return res.data;
         },
     });
-
+    const { reviewVerification } = useMutations()
     // Helper to format dates
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString("en-US", {
@@ -50,27 +52,29 @@ const VerificationDashboard = () => {
                 {data?.map((req) => (
                     <div
                         key={req.id}
-                        className="bg-white/5 rounded-xl  p-5 flex flex-col space-y-3 hover:border-gray-700 transition-colors"
+                        className="bg-white/5 rounded-xl p-4 flex flex-col space-y-3 hover:border-gray-700 transition-colors"
                     >
                         {/* Card Header: Status & Time */}
-                        {/* <div className="flex justify-between items-start"> */}
-                        {/* <span className={`
-                px-2 py-1 text-xs rounded border 
-                ${req.status === 'pending' ? 'border-yellow-900 bg-yellow-900/20 text-yellow-500' : ''}
-                ${req.status === 'approved' ? 'border-green-900 bg-green-900/20 text-green-500' : ''}
+                        <div className="flex justify-between items-center">
+                            <span className={`
+                px-2 py-1 text-xs rounded-lg  
+                ${req.status === 'pending' ? 'bg-yellow-900/20 text-yellow-500' : ''}
+                ${req.status === 'approved' ? 'bg-green-900/20 text-green-500' : ''}
+                                ${req.status === 'rejected' ? ' bg-red-900/20 text-red-500' : ''}
+
               `}>
                                 {req.status.toUpperCase()}
-                            </span> */}
-                        {/* <div className="flex items-center text-xs text-gray-500 gap-1">
+                            </span>
+                            <div className="flex items-center text-xs text-gray-500 gap-1">
                                 <Clock size={12} />
                                 {formatDate(req.requested_at)}
-                            </div> */}
-                        {/* </div> */}
+                            </div>
+                        </div>
 
-                        {/* Wallet Info (The "Main" Subject) */}
+                        {/* <div className='h-0.5 w-full bg-white/10' /> */}
 
                         <p className="text-sm text-gray-400 font-semibold">Wallet Address</p>
-                        <div className="flex items-center gap-2 bg-white/5 p-3 rounded-xl border border-gray-800">
+                        <div className="flex items-center gap-2 bg-white/5 p-3 rounded-xl ">
                             <User className="size-5" />
                             <span className=" font-semibold tracking-wide">
                                 {shortenAddress(req.wallet_address)}
@@ -93,7 +97,7 @@ const VerificationDashboard = () => {
                                     href={`https://ipfs.io/ipfs/${uri}`} // Assuming IPFS hash
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="flex items-center gap-2 font-semibold bg-white/5 hover:bg-[#333] px-4 py-2 rounded-lg text-green-400 border border-transparent hover:border-green-900 transition-all"
+                                    className="flex items-center gap-2 font-semibold text-sm bg-white/5 hover:bg-[#333] px-4 py-2 rounded-lg text-green-400 border border-transparent hover:border-green-900 transition-all"
                                 >
                                     <FileText size={16} />
                                     <span>View Doc {index + 1}</span>
@@ -104,11 +108,13 @@ const VerificationDashboard = () => {
 
                         {/* Action Footer */}
                         <div className=" grid grid-cols-2 gap-3">
-                            <button className="flex items-center justify-center  gap-2 bg-red-900/20 text-red-400 hover:bg-red-900/40 py-2 rounded-lg text-sm transition-colors">
-                                <XCircle size={16} /> Reject
+                            <button className="flex items-center justify-center  gap-2 bg-red-900/20 text-red-400 hover:bg-red-900/40 py-2 rounded-lg text-sm transition-colors" onClick={() => reviewVerification.mutate({ id: req.id, payload: { approve: false, review_reason: "" } })} >
+                                {(reviewVerification.isPending && !reviewVerification.variables.payload.approve) ? <Loader /> : <XCircle size={16} />}
+                                Reject
                             </button>
-                            <button className="flex items-center justify-center gap-2 bg-green-900/20 text-green-400 hover:bg-green-900/40 py-2 rounded-lg text-sm transition-colors">
-                                <CheckCircle size={16} /> Approve
+                            <button className="flex items-center justify-center gap-2 bg-green-900/20 text-green-400 hover:bg-green-900/40 py-2 rounded-lg text-sm transition-colors" onClick={() => reviewVerification.mutate({ id: req.id, payload: { approve: true, review_reason: "" } })}>
+                                {(reviewVerification.isPending && reviewVerification.variables.payload.approve) ? <Loader /> : <CheckCircle size={16} />}
+                                Approve
                             </button>
                         </div>
                     </div>

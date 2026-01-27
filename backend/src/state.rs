@@ -1,20 +1,33 @@
+use crate::solana_client::SolanaClient;
 use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: PgPool,
     pub issuer_wallet: String,
+    pub solana: Arc<SolanaClient>,
 }
 
 impl AppState {
-    pub async fn new(database_url: &str) -> Self {
+    pub async fn new(
+        database_url: &str,
+        rpc_url: &str,
+        keypair_path: &str,
+        program_id: &str,
+    ) -> Self {
         let db = PgPoolOptions::new()
             .max_connections(5)
             .connect(database_url)
             .await
             .expect("❌ Failed to connect to DB");
         let issuer_wallet = "FUk2WGh5Kcxk8sRm6V9jRYgWiQML7X8DPTKaK9Eqc1ry".to_string();
-        Self { db, issuer_wallet }
+        let solana = SolanaClient::new(rpc_url, keypair_path, program_id).await;
+        Self {
+            db,
+            issuer_wallet,
+            solana: Arc::new(solana),
+        }
     }
 }

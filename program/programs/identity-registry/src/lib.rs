@@ -1,13 +1,14 @@
 mod contexts;
 mod errors;
 mod states;
-use anchor_lang::prelude::*;
-
 use crate::contexts::*;
+use anchor_lang::prelude::*;
 declare_id!("6u94bx6UkkxxDZucnGRzoNKP48Y8DYc3ibDCpnUHo5Yj"); // Replace with your Program ID
+
 #[program]
 pub mod identity_registry {
     use super::*;
+
     pub fn initialize_registry(ctx: Context<InitRegistry>) -> Result<()> {
         let registry = &mut ctx.accounts.registry;
         registry.authority = ctx.accounts.authority.key();
