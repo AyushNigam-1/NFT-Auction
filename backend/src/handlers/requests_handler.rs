@@ -1,13 +1,3 @@
-use axum::Json as AxumJson;
-use axum::{Extension, extract::Path, http::StatusCode};
-use chrono::Utc;
-use solana_sdk::pubkey::Pubkey;
-use sqlx::types::Json as DbJson;
-use sqlx::{PgPool, Row, postgres::PgRow};
-use std::str::FromStr;
-use tracing::{error, info};
-use uuid::Uuid;
-
 use crate::{
     models::requests::{
         CreateVerificationRequest, ReviewVerificationPayload, VerificationRequest,
@@ -15,6 +5,16 @@ use crate::{
     },
     state::AppState,
 };
+use axum::Json as AxumJson;
+use axum::{Extension, extract::Path, http::StatusCode};
+use chrono::Utc;
+use serde_json::{Value, json};
+use solana_sdk::pubkey::Pubkey;
+use sqlx::types::Json as DbJson;
+use sqlx::{PgPool, Row, postgres::PgRow};
+use std::str::FromStr;
+use tracing::{error, info};
+use uuid::Uuid;
 
 pub async fn create_verification_request(
     Extension(state): Extension<AppState>,
@@ -229,4 +229,26 @@ pub async fn review_verification_request(
     }
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn check_verification_status(
+    Path(wallet_address): Path<String>,
+    Extension(state): Extension<AppState>,
+) -> Result<AxumJson<Value>, StatusCode> {
+    // Check if there is ANY record that is 'approved' for this wallet
+    let is_verified = sqlx::query!(
+        "SELECT id FROM verification_requests WHERE wallet_address = $1 AND status = 'approved'",
+        wallet_address
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        error!("DB Error checking status: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?
+    .is_some(); // True if a row was found, False otherwise
+
+    Ok(AxumJson(json!({
+        "verified": is_verified
+    })))
 }

@@ -23,6 +23,8 @@ impl anchor_lang::Id for IdentityRegistry {
 #[program]
 pub mod yieldhome {
 
+    use crate::states::ExternalIdentity;
+
     use super::*;
 
     pub fn create_property(
@@ -35,6 +37,39 @@ pub mod yieldhome {
         yield_percentage: u16,
         metadata_uri: String,
     ) -> Result<()> {
+        // ------------------------------------------------------------------
+        // 🔐 MANUAL IDENTITY CHECK (Fix for AccountOwnedByWrongProgram)
+        // ------------------------------------------------------------------
+        // Anchor cannot automatically verify accounts owned by OTHER programs
+        // so we must check this manually.
+
+        let identity_info = &ctx.accounts.identity;
+
+        // 1. Borrow raw data
+        let data = identity_info.try_borrow_data()?;
+        if data.len() < 8 {
+            return err!(ErrorCode::InvalidAccountData);
+        }
+
+        // 2. Deserialize Data (Skip first 8 bytes used for Anchor discriminator)
+        let mut payload = &data[8..];
+        let identity_data: ExternalIdentity = AnchorDeserialize::deserialize(&mut payload)
+            .map_err(|_| ErrorCode::InvalidAccountData)?;
+
+        // 3. Enforce Logic
+        require!(identity_data.verified, ErrorCode::IdentityNotVerified);
+        require!(!identity_data.revoked, ErrorCode::IdentityRevoked);
+
+        // 4. Verify Ownership: Ensure this identity actually belongs to the user signing this transaction
+        // (Prevents using someone else's verified identity)
+        require_keys_eq!(
+            identity_data.owner,
+            ctx.accounts.owner.key(),
+            ErrorCode::IdentityOwnerMismatch
+        );
+        // ------------------------------------------------------------------
+
+        // === EXISTING PROPERTY CREATION LOGIC ===
         let property = &mut ctx.accounts.property;
         property.owner = ctx.accounts.owner.key();
         property.mint = ctx.accounts.mint.key();
@@ -46,19 +81,21 @@ pub mod yieldhome {
         property.yield_percentage = yield_percentage;
         property.metadata_uri = metadata_uri.clone();
         property.bump = ctx.bumps.property;
+
         let decimals = ctx.accounts.mint.decimals;
+
         // Safe CPI: Transfer initial shares from owner → vault (with decimals check)
         let cpi_accounts = TransferChecked {
             from: ctx.accounts.owner_token_account.to_account_info(),
             to: ctx.accounts.vault_token_account.to_account_info(),
-            mint: ctx.accounts.mint.to_account_info(), // ← Required for checked
+            mint: ctx.accounts.mint.to_account_info(),
             authority: ctx.accounts.owner.to_account_info(),
         };
 
         let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
 
         // Transfer with decimals (use your mint's decimals, e.g. 6)
-        transfer_checked(cpi_ctx, total_shares, decimals)?; // ← Amount, decimals
+        transfer_checked(cpi_ctx, total_shares, decimals)?;
 
         emit!(PropertyCreated {
             property: property.key(),
@@ -259,16 +296,13 @@ pub mod yieldhome {
 
     pub fn initialize_dealer(
         ctx: Context<InitializeDealer>,
-        buy_price: u64,
-        sell_price: u64,
+        base_price: u64, // Use one base price, logic handles +/- 2%
         max_shares: u64,
     ) -> Result<()> {
         let dealer = &mut ctx.accounts.dealer_state;
         dealer.admin = ctx.accounts.admin.key();
         dealer.property_mint = ctx.accounts.property_mint.key();
-        dealer.payment_mint = ctx.accounts.payment_mint.key();
-        dealer.buy_price = buy_price;
-        dealer.sell_price = sell_price;
+        dealer.base_price = base_price;
         dealer.max_shares_per_tx = max_shares;
         dealer.is_frozen = false;
         dealer.bump = ctx.bumps.dealer_state;
@@ -276,7 +310,6 @@ pub mod yieldhome {
     }
 
     // USER BUYS FROM DEALER (Inventory -> User)
-    // USER BUYS FROM DEALER (User pays SOL -> Gets Shares)
     pub fn buy_from_dealer(ctx: Context<TradeDealer>, quantity: u64) -> Result<()> {
         let dealer = &ctx.accounts.dealer_state;
         require!(!dealer.is_frozen, ErrorCode::TradingFrozen);
@@ -285,13 +318,12 @@ pub mod yieldhome {
             ErrorCode::LimitExceeded
         );
 
-        // 1. Calculate Base Cost
+        // 1. Calculate Costs (Logic kept for validation)
         let base_cost = quantity
             .checked_mul(dealer.base_price)
             .ok_or(ErrorCode::MathOverflow)?;
 
-        // 2. Calculate 2% Fee (Basis Points: 2% = 200 bps, but simple math: * 102 / 100)
-        // Formula: Total = Base * 1.02
+        // 2% Fee Logic
         let total_cost = base_cost
             .checked_mul(102)
             .ok_or(ErrorCode::MathOverflow)?
@@ -299,7 +331,8 @@ pub mod yieldhome {
             .ok_or(ErrorCode::MathOverflow)?;
 
         // 3. Transfer SOL (User -> Dealer)
-        let cpi_context = CpiContext::new(
+        // ⬇️ COMMENTED OUT AS REQUESTED ⬇️
+        /* let cpi_context = CpiContext::new(
             ctx.accounts.system_program.to_account_info(),
             anchor_lang::system_program::Transfer {
                 from: ctx.accounts.user.to_account_info(),
@@ -307,6 +340,7 @@ pub mod yieldhome {
             },
         );
         anchor_lang::system_program::transfer(cpi_context, total_cost)?;
+        */
 
         // 4. Transfer Shares (Dealer -> User)
         let seeds = &[
@@ -332,18 +366,17 @@ pub mod yieldhome {
         Ok(())
     }
 
-    // USER SELLS TO DEALER (User -> Inventory) [THE INSTANT LIQUIDITY]
+    // USER SELLS TO DEALER (User -> Inventory)
     pub fn sell_to_dealer(ctx: Context<TradeDealer>, quantity: u64) -> Result<()> {
         let dealer = &ctx.accounts.dealer_state;
         require!(!dealer.is_frozen, ErrorCode::TradingFrozen);
 
-        // 1. Calculate Base Value
+        // 1. Calculate Payout
         let base_value = quantity
             .checked_mul(dealer.base_price)
             .ok_or(ErrorCode::MathOverflow)?;
 
-        // 2. Calculate Payout with 2% Deduction
-        // Formula: Payout = Base * 0.98
+        // 2% Fee Deduction
         let payout = base_value
             .checked_mul(98)
             .ok_or(ErrorCode::MathOverflow)?
@@ -351,11 +384,14 @@ pub mod yieldhome {
             .ok_or(ErrorCode::MathOverflow)?;
 
         // 3. Check Liquidity
+        // ⬇️ COMMENTED OUT (Since we aren't transferring, we don't strictly need to check)
+        /*
         let dealer_lamports = ctx.accounts.dealer_state.to_account_info().lamports();
         require!(
             dealer_lamports >= payout,
             ErrorCode::InsufficientDealerLiquidity
         );
+        */
 
         // 4. Transfer Shares (User -> Dealer)
         anchor_spl::token::transfer(
@@ -371,16 +407,11 @@ pub mod yieldhome {
         )?;
 
         // 5. Transfer SOL (Dealer -> User)
-        **ctx
-            .accounts
-            .dealer_state
-            .to_account_info()
-            .try_borrow_mut_lamports()? -= payout;
-        **ctx
-            .accounts
-            .user
-            .to_account_info()
-            .try_borrow_mut_lamports()? += payout;
+        // ⬇️ COMMENTED OUT AS REQUESTED ⬇️
+        /*
+         **ctx.accounts.dealer_state.to_account_info().try_borrow_mut_lamports()? -= payout;
+         **ctx.accounts.user.to_account_info().try_borrow_mut_lamports()? += payout;
+         */
 
         Ok(())
     }

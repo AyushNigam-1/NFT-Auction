@@ -47,10 +47,16 @@ pub struct DealerState {
     pub admin: Pubkey,
     pub base_price: u64, // The "Real" value (e.g., 1 SOL)         // You (The Liquidity Provider)
     pub property_mint: Pubkey, // The Real Estate Token
-    pub payment_mint: Pubkey, // USDC (or SOL if you wrap it)
-    pub buy_price: u64,  // Price user PAYS to buy (e.g. 102)
-    pub sell_price: u64, // Price user GETS to sell (e.g. 98)
     pub max_shares_per_tx: u64, // Anti-Whale Limit
     pub is_frozen: bool, // Circuit Breaker
     pub bump: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct ExternalIdentity {
+    pub owner: Pubkey,
+    pub issuer: Pubkey,
+    pub verified: bool,
+    pub revoked: bool,
+    pub created_at: i64,
 }

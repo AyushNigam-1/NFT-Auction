@@ -7,7 +7,15 @@ import { BN } from "@coral-xyz/anchor";
 import axios from "axios";
 
 export const useMutations = () => {
-    const programActions = useProgramActions()
+    const programActions = useProgramActions();
+
+    // Define the shape of your Dealer Config
+    interface DealerConfig {
+        paymentMint: PublicKey;  // e.g. USDC Mint
+        buyPrice: number;        // e.g. 1.0
+        sellPrice: number;       // e.g. 1.1
+        maxShares: number;       // e.g. 100
+    }
 
     const createProperty = useMutation({
         mutationFn: async ({
@@ -15,74 +23,77 @@ export const useMutations = () => {
             mint
         }: {
             metadata: PropertyFormData;
-            mint?: string
+            mint: string;
         }) => {
             try {
-                console.log(metadata)
+                console.log("Starting Upload Sequence...", metadata);
+
+                // --- 1. IPFS Uploads ---
                 const imageUploadPromises = metadata.images.map(async (img) => {
-                    if (img instanceof File) {
-                        return await uploadFileToPinata(img);
-                    }
-                    return null; // Handle cases where it might not be a file
+                    return img instanceof File ? await uploadFileToPinata(img) : null;
                 });
-                console.log("Uploading legal_documents...");
+
                 const documentUploadPromises = metadata.legal_documents.map(async (doc) => {
                     if (doc instanceof File) {
                         const cid = await uploadFileToPinata(doc);
-                        return {
-                            cid,
-                            name: doc.name,
-                            type: doc.type
-                        };
+                        return { cid, name: doc.name, type: doc.type };
                     }
-                    return null; // Handle cases where it might not be a file
+                    return null;
                 });
 
                 const imageUrls = (await Promise.all(imageUploadPromises)).filter(url => url !== null);
                 const documentUrls = (await Promise.all(documentUploadPromises)).filter(url => url !== null);
 
+                // --- 2. Create Metadata JSON ---
                 const offChainMetadata = {
                     name: metadata.name,
                     symbol: metadata.symbol,
                     description: metadata.description,
-                    images: imageUrls, // The IPFS URL we just got
-                    attributes: metadata.attributes, // Your trait_type/value array
+                    images: imageUrls,
+                    attributes: metadata.attributes,
                     type: metadata.type,
                     rent: metadata.rent,
                     total_share: metadata.total_share,
                     total_value: metadata.total_value,
-                    legal_documents: documentUrls // Store document URLs clearly here
+                    legal_documents: documentUrls
                 };
 
                 const metadataUri = await uploadMetadataToPinata(offChainMetadata);
-                console.log("Uploading metadata JSON...", metadataUri);
+                console.log("Metadata uploaded:", metadataUri);
 
-                // https://gold-endless-fly-679.mypinata.cloud/ipfs/bafkreic5pezhgydaxpv2wvuhphkfjtrpfsk2n45ozmkucdtrb6gggfzy3m
+                // --- 3. CALCULATE DERIVED FIELDS ---
+                // Calculate Price in SOL (assuming inputs are in SOL)
+                const basePrice = metadata.total_value / metadata.total_share;
+                const calculatedMaxShares = Math.floor(metadata.total_share * 0.10);
+                // --- 4. Call Smart Contract ---
                 const txSig = await programActions.createProperty(
+                    // Property Args
                     metadata.total_share,
-                    new PublicKey("qsKv7R4yhPanCgBcgLmH9gBcnWTbw2ANLoMvTZD3JTi"),
+                    new PublicKey(mint),
                     metadata.name,
                     imageUrls[0],
                     metadata.address,
-                    metadata.total_value / metadata.total_share,
+                    basePrice, // Price per share
                     metadata.expected_yield,
-                    metadataUri
+                    metadataUri,
+
+                    // Dealer Args (Direct SOL)
+                    basePrice,         // Base Price
+                    20 // Max Shares
                 );
 
                 return { txSig, metadataUri };
 
             } catch (error) {
-                console.error("Upload sequence failed:", error);
+                console.error("Create Property Sequence Failed:", error);
                 throw error;
             }
         },
         onSuccess: (data) => {
-            // console.log("Property metadata uploaded successfully:", data.metadataUri);
-            // toast.success("Assets uploaded and Property created!");
+            console.log("Success! Tx:", data.txSig);
         },
         onError: (error: any) => {
-            console.error("Failed to create property:", error);
-            // toast.error("Failed to upload assets.");
+            console.error("Failed:", error);
         },
     });
 

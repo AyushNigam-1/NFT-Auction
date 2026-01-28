@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { motion } from 'framer-motion';
 import { ShieldCheck, Building2, TrendingUp, Lock, Wallet } from "lucide-react";
 import VerificationModal from "./components/ui/modals/Verification";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 
 const LoginPage = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,12 +16,32 @@ const LoginPage = () => {
   const { setVisible } = useWalletModal();
   const router = useRouter();
 
+
+
+  const {
+    data: isVerified,
+    isLoading,
+    isFetching,
+    isError: isQueryError,
+    refetch,
+  } = useQuery({
+    queryKey: ["verification-status", publicKey],
+    queryFn: async () => {
+      const res = await axios.get(
+        `http://127.0.0.1:3001/api/verify/status/${publicKey}`
+      );
+      console.log(res.data.verified, "lol")
+      return res.data.verified as boolean;
+    },
+    enabled: !!publicKey, // Only run if wallet is connected
+    staleTime: 60 * 1000, // Cache result for 1 minute
+  });
+
   useEffect(() => {
-    if (connected && publicKey) {
-      setIsOpen(true)
-      // router.push("/marketplace");
+    if (connected && publicKey && isVerified) {
+      isVerified ? router.push("/marketplace") : setIsOpen(true)
     }
-  }, [connected, publicKey, router]);
+  }, [connected, publicKey, router, isVerified]);
 
   const handleAction = () => {
     if (connected) {

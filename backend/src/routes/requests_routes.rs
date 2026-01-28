@@ -4,7 +4,8 @@ use axum::{
 };
 
 use crate::handlers::requests_handler::{
-    create_verification_request, get_all_verification_requests, review_verification_request,
+    check_verification_status, create_verification_request, get_all_verification_requests,
+    review_verification_request,
 };
 
 pub fn requests_routes() -> Router {
@@ -12,4 +13,8 @@ pub fn requests_routes() -> Router {
         .route("/verify", post(create_verification_request))
         .route("/admin/verify", get(get_all_verification_requests))
         .route("/admin/verify/{id}", patch(review_verification_request))
+        .route(
+            "/verify/status/{wallet_address}",
+            get(check_verification_status),
+        )
 }

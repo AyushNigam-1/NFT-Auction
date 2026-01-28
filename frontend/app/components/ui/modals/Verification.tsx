@@ -1,12 +1,8 @@
 "use client";
-import { Fragment, useState, useEffect } from "react";
+import { Fragment, useState } from "react";
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from "@headlessui/react";
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";;
-import {
-    getAssociatedTokenAddressSync,
-    TOKEN_2022_PROGRAM_ID
-} from "@solana/spl-token";
 import {
     Upload,
     FileText,
@@ -18,55 +14,12 @@ import { usePrograms } from "@/app/hooks/useProgram";
 import { useMutations } from "@/app/hooks/useMutations";
 
 export default function VerificationModal({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (val: boolean) => void }) {
-    // const [isOpen, setIsOpen] = useState(false);
     const [status, setStatus] = useState<"idle" | "checking" | "uploading" | "minting" | "success">("checking");
     const [file, setFile] = useState<File | null>(null);
     const { createVerificationRequest } = useMutations()
     const { publicKey } = useWallet();
-    const { connection } = useConnection();
     const router = useRouter();
-    const { identityProgram, getKycMintPDA } = usePrograms();
 
-    // ---------------------------------------------------------
-    // 1. AUTOMATIC CHECK: Does user already have the SBT?
-    // ---------------------------------------------------------
-    useEffect(() => {
-        const checkEligibility = async () => {
-            if (!publicKey) return;
-
-            try {
-                const mintPda = getKycMintPDA();
-
-                // Derive where the SBT *should* be
-                const ata = getAssociatedTokenAddressSync(
-                    mintPda,
-                    publicKey,
-                    false,
-                    TOKEN_2022_PROGRAM_ID
-                );
-
-                // Check balance
-                const balance = await connection.getTokenAccountBalance(ata);
-
-                if (balance.value.uiAmount === 1) {
-                    console.log("✅ User already verified. Redirecting...");
-                    router.push("/dashboard");
-                } else {
-                    setStatus("idle");
-                    setIsOpen(true); // Open modal if not verified
-                }
-            } catch (e) {
-                // If account doesn't exist, they are not verified
-                console.log("User not verified yet.");
-                setStatus("idle");
-                setIsOpen(true);
-            }
-        };
-
-        checkEligibility();
-    }, [publicKey, connection, router]);
-
-    // Helper to handle drag-drop
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setFile(e.target.files[0]);
@@ -161,9 +114,6 @@ export default function VerificationModal({ isOpen, setIsOpen }: { isOpen: boole
                                                     accept=".jpg,.jpeg,.png,.pdf"
                                                 />
                                             </label>
-
-                                            {/* Action Button */}
-
                                         </>
                                     )}
                                 </div>

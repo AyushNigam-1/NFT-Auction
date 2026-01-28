@@ -3,7 +3,7 @@ import { HeaderProps } from '@/app/types'
 import { RefreshCcw } from 'lucide-react'
 import React from 'react'
 
-const Header: React.FC<HeaderProps> = ({ title, refetch, setSearchQuery, isFetching, setOpen }) => {
+const Header: React.FC<HeaderProps> = ({ title, refetch, setSearchQuery, isFetching }) => {
     return (
         <div className='font-mono space-y-4'>
             <div className='flex justify-between items-center' >
@@ -20,8 +20,7 @@ const Header: React.FC<HeaderProps> = ({ title, refetch, setSearchQuery, isFetch
                             />
                         </div>
                     }
-
-                    <button
+                    {/* {refetch && <button
                         onClick={() => refetch()}
                         disabled={isFetching}
                         className={`  p-2 flex items-center gap-2 rounded-full
@@ -32,20 +31,7 @@ const Header: React.FC<HeaderProps> = ({ title, refetch, setSearchQuery, isFetch
                     >
                         <RefreshCcw className={`size-6 ${isFetching ? 'animate-spin' : ''}`} />
 
-                    </button>
-
-                    {
-                        setOpen ? <button
-                            onClick={() => setOpen(true)}
-                            disabled={isFetching}
-                            className={` py-2 px-4 flex items-center gap-2 rounded-lg text-white transition-all transform hover:scale-[1.01] bg-blue-400/70`}
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                            </svg>
-                            Add Subscription
-                        </button> : ""
-                    }
+                    </button>} */}
                 </div>
             </div>
             <div className='h-0.5 w-full bg-white/5' />

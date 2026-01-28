@@ -4,9 +4,9 @@ import { BN, IdlAccounts } from "@coral-xyz/anchor";
 import { Yieldhome } from "./target/types/yieldhome";
 export interface HeaderProps {
     title: string;
-    refetch: () => void;
+    refetch?: () => void;
     setSearchQuery?: (query: string) => void;
-    isFetching: boolean;
+    isFetching?: boolean;
     setOpen?: Dispatch<SetStateAction<boolean>>
 }
 

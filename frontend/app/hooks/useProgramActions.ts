@@ -1,10 +1,10 @@
 import { PropertyData, PropertyFormData, PropertyItem, RawPropertyAccount } from "../types";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
+import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, TransactionInstruction } from "@solana/web3.js";
 import { BN, utils, web3 } from "@coral-xyz/anchor";
 import { usePrograms } from "./useProgram";
 import { getMintProgramId } from "../utils";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress, getAssociatedTokenAddressSync, getMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountInstruction, getAccount, getAssociatedTokenAddress, getAssociatedTokenAddressSync, getMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, TokenAccountNotFoundError } from "@solana/spl-token";
 import { Console } from "console";
 import { publicKey } from "@metaplex-foundation/umi";
 
@@ -278,7 +278,7 @@ export const useProgramActions = () => {
             false,
             tokenProgramId
         );
-        console.log(propertyPda.toBase58())
+
         try {
             // 4. Execute Instruction with EXPLICIT Accounts
             const tx = await yieldProgram.methods
@@ -301,63 +301,102 @@ export const useProgramActions = () => {
         }
     }
 
-    async function createProperty(
+    // Helper constant for SOL decimals
+    const LAMPOSTS_PER_SOL = 1_000_000_000;
+
+    const createProperty = async (
+        // 1. Property Args
         totalShares: number,
         mintPubkey: PublicKey,
         name: string,
         thumbnailUri: string,
         address: string,
-        price_per_share: number,
+        price_per_share: number, // In SOL (e.g., 0.1)
         yieldPercentage: number,
-        metadata_uri: string
-    ) {
-        console.log("Creating property:", {
-            mintPubkey,
-            name,
-            totalShares,
-            thumbnailUri,
-            address,
-            price_per_share,
-            yieldPercentage,
-            metadata_uri
+        metadata_uri: string,
 
-        });
+        // 2. Dealer Args (Simplified for SOL)
+        basePrice: number,       // Base Price in SOL
+        maxShares: number        // Max shares per tx
+    ) => {
+        console.log("Creating Property + Dealer (Direct SOL)...");
+
         if (!wallet.connected || !wallet.publicKey) {
             throw new Error("Wallet not connected");
         }
 
         const connection = yieldProgram!.provider.connection;
-        const tokenProgramId = await getMintProgramId(mintPubkey);
 
-        // ✅ Get mint decimals
-        const mintInfo = await getMint(connection, mintPubkey, undefined, tokenProgramId);
-        const decimals = mintInfo.decimals;
+        // --- STEP A: PREPARE DATA ---
 
-        // ✅ Convert to raw amount
-        const rawAmount = totalShares * Math.pow(10, decimals);
+        // 1. Get Property Mint Info & Decimals
+        const propertyTokenProgramId = await getMintProgramId(mintPubkey);
+        const propertyMintInfo = await getMint(connection, mintPubkey, undefined, propertyTokenProgramId);
+        const propDecimals = propertyMintInfo.decimals;
+
+        // 2. Convert to Raw BN
+        // Shares: Amount * 10^decimals
+        const rawTotalShares = new BN(totalShares * Math.pow(10, propDecimals));
+        const rawMaxShares = new BN(maxShares * Math.pow(10, propDecimals));
+
+        // Price (SOL): Amount * 10^9 (Lamports)
+        // We use Math.floor/round or a library to avoid floating point errors in JS
+        const rawPricePerShare = new BN(Math.round(price_per_share * LAMPOSTS_PER_SOL));
+        const rawBasePrice = new BN(Math.round(basePrice * LAMPOSTS_PER_SOL));
+
+        // --- STEP B: PREPARE IDENTITY ---
         const [identityPda] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("identity"),
-                wallet.publicKey.toBuffer(),
-            ],
+            [Buffer.from("identity"), wallet.publicKey.toBuffer()],
             identityProgram!.programId
         );
-        let identityAccount;
 
+        // Verify identity locally (optional check)
         try {
-            identityAccount = await identityProgram!.account.identity.fetch(identityPda);
+            const idAccount = await identityProgram!.account.identity.fetch(identityPda);
+            if (!idAccount.verified || idAccount.revoked) throw new Error("Identity issue");
         } catch {
-            throw new Error("Identity not found. Please verify your identity first.");
+            throw new Error("Identity not verified.");
         }
 
-        if (!identityAccount.verified || identityAccount.revoked) {
-            throw new Error("Identity is not verified or has been revoked.");
-        }
+        // --- STEP C: PREPARE DEALER INSTRUCTION ---
+
+        // 1. Derive Dealer PDAs
+        const [dealerStatePda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("dealer"), mintPubkey.toBuffer()],
+            yieldProgram!.programId
+        );
+        const [dealerShareVaultPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("dealer_share_vault"), mintPubkey.toBuffer()],
+            yieldProgram!.programId
+        );
+
+        // NOTE: Removed dealerPaymentVaultPda (Not needed for SOL)
+
+        // 2. Build the Instruction Object
+        const initDealerIx = await yieldProgram!.methods
+            .initializeDealer(
+                rawBasePrice, // One base price
+                rawMaxShares
+            )
+            .accounts({
+                admin: wallet.publicKey,
+                propertyMint: mintPubkey,
+                dealerState: dealerStatePda,
+                dealerShareVault: dealerShareVaultPda,
+                // dealerPaymentVault: REMOVED
+                // paymentMint: REMOVED
+                systemProgram: SystemProgram.programId,
+                tokenProgram: propertyTokenProgramId,
+                rent: SYSVAR_RENT_PUBKEY,
+            })
+            .instruction();
+
+        // --- STEP D: CHAIN & EXECUTE ---
 
         const tx = await yieldProgram!.methods
             .createProperty(
-                new BN(rawAmount), // ✅ Pass raw amount, not human-readable
-                new BN(price_per_share),
+                rawTotalShares,
+                rawPricePerShare,
                 name,
                 address,
                 thumbnailUri,
@@ -367,10 +406,14 @@ export const useProgramActions = () => {
             .accounts({
                 owner: wallet.publicKey,
                 mint: mintPubkey,
-                tokenProgram: tokenProgramId,
+                tokenProgram: propertyTokenProgramId,
+                identity: identityPda,
+                identityRegistry: identityProgram!.programId
             })
+            .postInstructions([initDealerIx]) // Chain it!
             .rpc();
 
+        console.log("Success! Tx Signature:", tx);
         return tx;
     }
 
@@ -571,49 +614,78 @@ export const useProgramActions = () => {
         quantity: number;        // Number of shares
     }
 
-    const handleBuy = async ({
-        propertyMint,
-        quantity
-    }: TradeParams) => {
+    const handleBuy = async ({ propertyMint, quantity }: TradeParams) => {
         if (!wallet.publicKey) throw new Error("Wallet not connected");
 
-        try {
-            console.log(`Buying ${quantity} shares (Base + 2% Fee)...`);
+        const connection = yieldProgram!.provider.connection;
 
-            // 1. Derive Dealer State PDA
+        try {
+            console.log(`Processing Buy for ${quantity} shares...`);
+
+            // 1. Fetch Mint Info (Decimals & Program ID)
+            // We check the mint owner to support both Token and Token-2022
+            const mintAccountInfo = await connection.getAccountInfo(propertyMint);
+            if (!mintAccountInfo) throw new Error("Mint not found");
+            const tokenProgramId = mintAccountInfo.owner; // The correct Token Program ID
+
+            const mintInfo = await getMint(connection, propertyMint, undefined, tokenProgramId);
+            const decimals = mintInfo.decimals;
+
+            // 2. Convert Human Quantity to Raw BN
+            const rawQuantity = new BN(quantity * Math.pow(10, decimals));
+
+            // 3. Derive PDAs
             const [dealerStatePda] = PublicKey.findProgramAddressSync(
                 [Buffer.from("dealer"), propertyMint.toBuffer()],
                 yieldProgram!.programId
             );
 
-            // 2. Derive Dealer Share Vault PDA (Where shares come from)
             const [dealerShareVault] = PublicKey.findProgramAddressSync(
                 [Buffer.from("dealer_share_vault"), propertyMint.toBuffer()],
                 yieldProgram!.programId
             );
 
-            // 3. Get User's Property Token Account (ATA)
-            // NOTE: If this is the user's first buy, this account must be created first.
-            // Most dApps bundle the 'createAccount' instruction here if it doesn't exist.
+            // 4. Derive User's ATA & Check if it exists
             const userShareAta = getAssociatedTokenAddressSync(
                 propertyMint,
                 wallet.publicKey,
                 false,
-                TOKEN_2022_PROGRAM_ID
+                tokenProgramId
             );
 
-            // 4. Send Transaction
+            // Check if account needs creation
+            const preInstructions: TransactionInstruction[] = [];
+            try {
+                await getAccount(connection, userShareAta, undefined, tokenProgramId);
+            } catch (error: any) {
+                // If account not found, add creation instruction
+                if (error instanceof TokenAccountNotFoundError || error.name === "TokenAccountNotFoundError") {
+                    console.log("Creating new Token Account for user...");
+                    preInstructions.push(
+                        createAssociatedTokenAccountInstruction(
+                            wallet.publicKey, // Payer
+                            userShareAta,     // Ata to create
+                            wallet.publicKey, // Owner
+                            propertyMint,     // Mint
+                            tokenProgramId    // Program ID
+                        )
+                    );
+                }
+            }
+
+            // 5. Send Transaction (with Pre-Instruction if needed)
             const tx = await yieldProgram!.methods
-                .buyFromDealer(new BN(quantity))
+                .buyFromDealer(rawQuantity)
                 .accounts({
                     user: wallet.publicKey,
                     dealerState: dealerStatePda,
                     propertyMint: propertyMint,
                     dealerShareVault: dealerShareVault,
                     userShareAccount: userShareAta,
-                    tokenProgram: TOKEN_2022_PROGRAM_ID,
+                    tokenProgram: tokenProgramId, // Dynamic
                     systemProgram: SystemProgram.programId,
                 })
+                .preInstructions(preInstructions) // <--- Auto-creates ATA
                 .rpc();
 
             console.log("✅ Buy Successful! TX:", tx);
@@ -624,45 +696,54 @@ export const useProgramActions = () => {
             throw error;
         }
     };
-    const handleSell = async ({
-        propertyMint,
-        quantity
-    }: TradeParams) => {
+
+    const handleSell = async ({ propertyMint, quantity }: TradeParams) => {
         if (!wallet.publicKey) throw new Error("Wallet not connected");
 
-        try {
-            console.log(`Selling ${quantity} shares (Base - 2% Fee)...`);
+        const connection = yieldProgram!.provider.connection;
 
-            // 1. Derive Dealer State PDA
+        try {
+            console.log(`Processing Sell for ${quantity} shares...`);
+
+            // 1. Fetch Mint Info for Decimals
+            const mintAccountInfo = await connection.getAccountInfo(propertyMint);
+            if (!mintAccountInfo) throw new Error("Mint not found");
+            const tokenProgramId = mintAccountInfo.owner;
+
+            const mintInfo = await getMint(connection, propertyMint, undefined, tokenProgramId);
+
+            // 2. Convert Human Quantity to Raw BN
+            const rawQuantity = new BN(quantity * Math.pow(10, mintInfo.decimals));
+
+            // 3. Derive PDAs
             const [dealerStatePda] = PublicKey.findProgramAddressSync(
                 [Buffer.from("dealer"), propertyMint.toBuffer()],
                 yieldProgram!.programId
             );
 
-            // 2. Derive Dealer Share Vault PDA (Where shares go to)
             const [dealerShareVault] = PublicKey.findProgramAddressSync(
                 [Buffer.from("dealer_share_vault"), propertyMint.toBuffer()],
                 yieldProgram!.programId
             );
 
-            // 3. Get User's Property Token Account
+            // 4. Get User's ATA
             const userShareAta = getAssociatedTokenAddressSync(
                 propertyMint,
                 wallet.publicKey,
                 false,
-                TOKEN_2022_PROGRAM_ID
+                tokenProgramId
             );
 
-            // 4. Send Transaction
+            // 5. Send Transaction
             const tx = await yieldProgram!.methods
-                .sellToDealer(new BN(quantity))
+                .sellToDealer(rawQuantity)
                 .accounts({
                     user: wallet.publicKey,
                     dealerState: dealerStatePda,
                     propertyMint: propertyMint,
                     dealerShareVault: dealerShareVault,
                     userShareAccount: userShareAta,
-                    tokenProgram: TOKEN_2022_PROGRAM_ID,
+                    tokenProgram: tokenProgramId,
                     systemProgram: SystemProgram.programId,
                 })
                 .rpc();
@@ -676,5 +757,5 @@ export const useProgramActions = () => {
         }
     };
 
-    return { createProperty, deleteProperty, getAllProperties, buyShares, getAllShares, getMyListings, forceCloseShareholder, depositRent, claimYield, issueIdentity, handleBuy, handleSell }
+    return { createProperty, deleteProperty, getAllProperties, buyShares, getAllShares, getMyListings, forceCloseShareholder, depositRent, claimYield, issueIdentity, handleBuy, handleSell, buyFromDealer }
 }

@@ -40,4 +40,10 @@ pub enum ErrorCode {
 
     #[msg("Slippage tolerance exceeded.")]
     SlippageExceeded,
+
+    #[msg("Account data is invalid or cannot be deserialized.")]
+    InvalidAccountData,
+
+    #[msg("Identity account does not belong to the signer.")]
+    IdentityOwnerMismatch,
 }
